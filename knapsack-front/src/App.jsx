@@ -28,6 +28,7 @@ export default function App() {
   const [lengthsInput, setLengthsInput] = useState(DEFAULT_LENGTHS.join(", "));
   const [smallInput, setSmallInput] = useState(DEFAULT_SMALL.join(", "));
   const [maxPieces, setMaxPieces] = useState(3);          // <= 3 pieces (2 joints)
+  const [maxWastePct, setMaxWastePct] = useState("");     // Optional: e.g., 0.02 for 2% max waste
   const [alphaJoint, setAlphaJoint] = useState(220);
   const [betaSmall, setBetaSmall] = useState(60);
   const [allowUndershootPct, setAllowUndershootPct] = useState(0);
@@ -43,17 +44,19 @@ export default function App() {
   );
 
   const result = useMemo(() => {
+    const wasteLimit = Number(maxWastePct);
     return optimizeCuts({
       required,
       lengths: parsedLengths,
       smallLengths: parsedSmall,
       maxPieces: Number(maxPieces) || undefined,
+      maxWastePct: Number.isFinite(wasteLimit) && wasteLimit > 0 ? wasteLimit : undefined,
       allowUndershootPct: Number(allowUndershootPct) || 0,
       alphaJoint: Number(alphaJoint) || 0,
       betaSmall: Number(betaSmall) || 0,
       gammaShort: Number(gammaShort) || 0
     });
-  }, [required, parsedLengths, parsedSmall, maxPieces, allowUndershootPct, alphaJoint, betaSmall, gammaShort]);
+  }, [required, parsedLengths, parsedSmall, maxPieces, maxWastePct, allowUndershootPct, alphaJoint, betaSmall, gammaShort]);
 
   const extraPct = useMemo(() => {
     if (!result.ok) return 0;
@@ -101,6 +104,7 @@ export default function App() {
               <TextField label="Cut Lengths (mm, comma-separated)" value={lengthsInput} setValue={setLengthsInput} />
               <TextField label="Small Lengths (discourage)" value={smallInput} setValue={setSmallInput} />
               <NumberField label="Max Pieces (hard cap)" value={maxPieces} setValue={setMaxPieces} />
+              <NumberField label="Max Waste % (e.g., 0.02 for 2%) – optional" value={maxWastePct} setValue={setMaxWastePct} step={0.01} />
               <NumberField label="α Joint Penalty (per joint, in mm)" value={alphaJoint} setValue={setAlphaJoint} />
               <NumberField label="β Small Penalty (per small piece, in mm)" value={betaSmall} setValue={setBetaSmall} />
               <NumberField label="Allow Undershoot (%)" value={allowUndershootPct} setValue={setAllowUndershootPct} />
@@ -160,6 +164,7 @@ export default function App() {
               <li>Raise <strong>α</strong> to reduce joints (accept a bit more waste).</li>
               <li>Raise <strong>β</strong> to avoid small pieces.</li>
               <li>Lower <strong>Max Pieces</strong> to strictly cap joints.</li>
+              <li>Set <strong>Max Waste %</strong> to 0.02 to enforce a 2% waste limit (hard constraint).</li>
               <li>Set <strong>Allow Undershoot</strong> if field practice allows small shortfalls.</li>
             </ul>
           </Card>
@@ -207,12 +212,13 @@ function TextField({ label, value, setValue }) {
   );
 }
 
-function NumberField({ label, value, setValue }) {
+function NumberField({ label, value, setValue, step }) {
   return (
     <label className="block">
       <div className="mb-1 text-sm text-gray-600">{label}</div>
       <input
         type="number"
+        step={step}
         className="w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-black/10"
         value={value}
         onChange={e => setValue(e.target.value)}

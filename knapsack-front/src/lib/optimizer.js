@@ -8,6 +8,7 @@
  *  smallLengths?: number[]                     - subset treated as "small" (discouraged)
  *  maxPieces?: number                          - hard cap on number of pieces (optional)
  *  allowUndershootPct?: number                 - e.g. 0.01 allows up to 1% shortfall (optional)
+ *  maxWastePct?: number                        - e.g. 0.02 allows max 2% waste (optional)
  *  alphaJoint?: number                         - penalty per joint (pieces - 1), in "mm units"
  *  betaSmall?: number                          - penalty per piece chosen from smallLengths
  *  gammaShort?: number                         - penalty per mm of undershoot
@@ -18,6 +19,7 @@ export function optimizeCuts({
   smallLengths = [],
   maxPieces,
   allowUndershootPct = 0,
+  maxWastePct,
   alphaJoint = 220,
   betaSmall = 60,
   gammaShort = 5
@@ -70,6 +72,13 @@ export function optimizeCuts({
 
     const extra = Math.max(0, s.total - R);
     const shortage = s.total >= R ? 0 : (R - s.total);
+
+    // Check waste percentage constraint if specified
+    if (maxWastePct !== undefined && R > 0) {
+      const wastePct = extra / R;
+      if (wastePct > maxWastePct) continue; // Skip solutions exceeding waste limit
+    }
+
     const joints = Math.max(0, s.pieces - 1);
     const cost = extra + alphaJoint * joints + betaSmall * s.small + gammaShort * shortage;
 
@@ -79,7 +88,9 @@ export function optimizeCuts({
   if (candidates.length === 0) {
     return {
       ok: false,
-      reason: "No feasible combination found. Try increasing max pieces or allowing undershoot."
+      reason: maxWastePct !== undefined
+        ? `No solution found within ${(maxWastePct * 100).toFixed(1)}% waste limit. Try increasing max waste, max pieces, or allowing undershoot.`
+        : "No feasible combination found. Try increasing max pieces or allowing undershoot."
     };
   }
 
