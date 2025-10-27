@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(if not exist \"public\" mkdir public)",
+      "Bash(copy \"benchmark-test.html\" \"public\\benchmark-test.html\")",
+      "Bash(powershell -Command:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

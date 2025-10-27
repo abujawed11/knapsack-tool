@@ -66,7 +66,17 @@ export default function App() {
       <header className="border-b bg-white">
         <div className="mx-auto max-w-6xl px-4 py-4 flex items-center justify-between">
           <h1 className="text-xl font-semibold">Rail Cut Optimizer</h1>
-          <div className="text-sm text-gray-500">React + Tailwind • DP Knapsack</div>
+          <div className="flex items-center gap-4">
+            <a
+              href="/benchmark-test.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-purple-600 to-purple-700 rounded-lg hover:from-purple-700 hover:to-purple-800 transition-all shadow-sm hover:shadow-md"
+            >
+              🎯 Performance Benchmark
+            </a>
+            <div className="text-sm text-gray-500">React + Tailwind • DP Knapsack</div>
+          </div>
         </div>
       </header>
 
