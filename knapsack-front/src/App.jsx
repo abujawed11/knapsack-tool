@@ -3,7 +3,6 @@ import { useMemo, useState } from "react";
 import { optimizeCuts, requiredRailLength, generateScenarios } from "./lib/optimizer";
 
 const DEFAULT_LENGTHS = [1595, 1798, 2400, 2750, 3200, 3600, 4800];
-const DEFAULT_SMALL = [1595, 1798, 2400];
 
 export default function App() {
   // User mode: 'normal' or 'advanced'
@@ -30,7 +29,12 @@ export default function App() {
 
   // Optimizer knobs
   const [lengthsInput, setLengthsInput] = useState(DEFAULT_LENGTHS.join(", "));
-  const [smallInput, setSmallInput] = useState(DEFAULT_SMALL.join(", "));
+  // Track which lengths are enabled (true = use, false = ignore)
+  const [enabledLengths, setEnabledLengths] = useState(() => {
+    const initial = {};
+    DEFAULT_LENGTHS.forEach(len => initial[len] = true);
+    return initial;
+  });
   const [maxPieces, setMaxPieces] = useState(3);          // <= 3 pieces (2 joints)
   const [maxWastePct, setMaxWastePct] = useState("");     // Optional: e.g., 0.02 for 2% max waste
   const [alphaJoint, setAlphaJoint] = useState(220);
@@ -47,20 +51,37 @@ export default function App() {
   const [priority, setPriority] = useState('length'); // 'length', 'joints'
 
   const parsedLengths = useMemo(
-    () => parseNumList(lengthsInput),
-    [lengthsInput]
+    () => parseNumList(lengthsInput).filter(len => enabledLengths[len] !== false),
+    [lengthsInput, enabledLengths]
   );
-  const parsedSmall = useMemo(
-    () => parseNumList(smallInput),
-    [smallInput]
-  );
+
+  // Update enabledLengths when lengthsInput changes
+  const allLengths = useMemo(() => parseNumList(lengthsInput), [lengthsInput]);
+
+  const toggleLength = (len) => {
+    setEnabledLengths(prev => ({
+      ...prev,
+      [len]: !prev[len]
+    }));
+  };
+
+  const enableAll = () => {
+    const newEnabled = {};
+    allLengths.forEach(len => newEnabled[len] = true);
+    setEnabledLengths(newEnabled);
+  };
+
+  const disableAll = () => {
+    const newEnabled = {};
+    allLengths.forEach(len => newEnabled[len] = false);
+    setEnabledLengths(newEnabled);
+  };
 
   const result = useMemo(() => {
     const wasteLimit = Number(maxWastePct);
     return optimizeCuts({
       required,
       lengths: parsedLengths,
-      smallLengths: parsedSmall,
       maxPieces: Number(maxPieces) || undefined,
       maxWastePct: Number.isFinite(wasteLimit) && wasteLimit > 0 ? wasteLimit : undefined,
       allowUndershootPct: Number(allowUndershootPct) || 0,
@@ -71,7 +92,7 @@ export default function App() {
       costPerJointSet: Number(costPerJointSet) || 0,
       joinerLength: Number(joinerLength) || 0
     });
-  }, [required, parsedLengths, parsedSmall, maxPieces, maxWastePct, allowUndershootPct, alphaJoint, betaSmall, gammaShort, costPerMm, costPerJointSet, joinerLength]);
+  }, [required, parsedLengths, maxPieces, maxWastePct, allowUndershootPct, alphaJoint, betaSmall, gammaShort, costPerMm, costPerJointSet, joinerLength]);
 
   // Generate scenarios for comparison
   const scenarios = useMemo(() => {
@@ -79,7 +100,6 @@ export default function App() {
     const rawScenarios = generateScenarios({
       required,
       lengths: parsedLengths,
-      smallLengths: parsedSmall,
       allowUndershootPct: Number(allowUndershootPct) || 0,
       maxWastePct: Number(maxWastePct) || undefined,
       alphaJoint: Number(alphaJoint) || 0,
@@ -107,7 +127,7 @@ export default function App() {
     }
 
     return sorted;
-  }, [required, parsedLengths, parsedSmall, allowUndershootPct, maxWastePct, alphaJoint, betaSmall, gammaShort, costPerMm, costPerJointSet, joinerLength, priority]);
+  }, [required, parsedLengths, allowUndershootPct, maxWastePct, alphaJoint, betaSmall, gammaShort, costPerMm, costPerJointSet, joinerLength, priority]);
 
   // Get the best result based on priority (from scenarios)
   const bestResult = useMemo(() => {
@@ -208,22 +228,59 @@ export default function App() {
           </Card>
 
           <Card title="2) Optimizer Settings">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <TextField label="Cut Lengths (mm, comma-separated)" value={lengthsInput} setValue={setLengthsInput} />
+            <div className="space-y-4">
               {userMode === 'advanced' && (
-                <TextField label="Small Lengths (discourage)" value={smallInput} setValue={setSmallInput} />
+                <TextField label="Cut Lengths (mm, comma-separated)" value={lengthsInput} setValue={setLengthsInput} />
               )}
-              <NumberField label="Max Pieces (hard cap)" value={maxPieces} setValue={setMaxPieces} />
-              {userMode === 'advanced' && (
-                <>
-                  <NumberField label="Max Waste % (e.g., 0.02 for 2%) – optional" value={maxWastePct} setValue={setMaxWastePct} step={0.01} />
-                  <NumberField label="α Joint Penalty (per joint, in mm)" value={alphaJoint} setValue={setAlphaJoint} />
-                  <NumberField label="β Small Penalty (per small piece, in mm)" value={betaSmall} setValue={setBetaSmall} />
-                  <NumberField label="Allow Undershoot (%)" value={allowUndershootPct} setValue={setAllowUndershootPct} />
-                  <NumberField label="γ Shortage Penalty (per mm)" value={gammaShort} setValue={setGammaShort} />
-                  <NumberField label="Required Override (mm) – optional" value={requiredOverride} setValue={setRequiredOverride} />
-                </>
-              )}
+
+              {/* Length Selection */}
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm text-gray-600">Select Lengths to Use</span>
+                  <div className="flex gap-2">
+                    <button onClick={enableAll} className="text-xs text-purple-600 hover:text-purple-800">All</button>
+                    <span className="text-gray-300">|</span>
+                    <button onClick={disableAll} className="text-xs text-purple-600 hover:text-purple-800">None</button>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {allLengths.map(len => (
+                    <label
+                      key={len}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border cursor-pointer transition-colors ${
+                        enabledLengths[len] !== false
+                          ? 'bg-purple-50 border-purple-300 text-purple-700'
+                          : 'bg-gray-50 border-gray-200 text-gray-400'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={enabledLengths[len] !== false}
+                        onChange={() => toggleLength(len)}
+                        className="w-3.5 h-3.5 text-purple-600 rounded"
+                      />
+                      <span className="text-sm">{len} mm</span>
+                    </label>
+                  ))}
+                </div>
+                {parsedLengths.length === 0 && (
+                  <p className="text-xs text-red-500 mt-2">Please select at least one length</p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <NumberField label="Max Pieces (hard cap)" value={maxPieces} setValue={setMaxPieces} />
+                {userMode === 'advanced' && (
+                  <>
+                    <NumberField label="Max Waste % (e.g., 0.02 for 2%) – optional" value={maxWastePct} setValue={setMaxWastePct} step={0.01} />
+                    <NumberField label="α Joint Penalty (per joint, in mm)" value={alphaJoint} setValue={setAlphaJoint} />
+                    <NumberField label="β Small Penalty (per small piece, in mm)" value={betaSmall} setValue={setBetaSmall} />
+                    <NumberField label="Allow Undershoot (%)" value={allowUndershootPct} setValue={setAllowUndershootPct} />
+                    <NumberField label="γ Shortage Penalty (per mm)" value={gammaShort} setValue={setGammaShort} />
+                    <NumberField label="Required Override (mm) – optional" value={requiredOverride} setValue={setRequiredOverride} />
+                  </>
+                )}
+              </div>
             </div>
           </Card>
 
