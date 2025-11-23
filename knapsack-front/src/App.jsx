@@ -1,54 +1,205 @@
 // src/App.jsx
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { optimizeCuts, requiredRailLength, generateScenarios } from "./lib/optimizer";
 
 const DEFAULT_LENGTHS = [1595, 1798, 2400, 2750, 3200, 3600, 4800];
+const STORAGE_KEY = 'railOptimizerSettings';
+
+// Load settings from localStorage
+function loadSettings() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch (e) {
+    console.error('Failed to load settings:', e);
+  }
+  return null;
+}
+
+// Save settings to localStorage
+function saveSettings(settings) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  } catch (e) {
+    console.error('Failed to save settings:', e);
+  }
+}
+
+// Export settings to JSON file
+function exportToFile(settings) {
+  const json = JSON.stringify(settings, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'rail-optimizer-settings.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 
 export default function App() {
+  // Load saved settings on mount
+  const savedSettings = useMemo(() => loadSettings(), []);
+
   // User mode: 'normal' or 'advanced'
-  const [userMode, setUserMode] = useState('normal');
+  const [userMode, setUserMode] = useState(savedSettings?.userMode || 'normal');
   const [showSettings, setShowSettings] = useState(false);
 
   // Excel-like inputs
-  const [modules, setModules] = useState(3);
-  const [moduleWidth, setModuleWidth] = useState(1303);
-  const [midClamp, setMidClamp] = useState(20);
-  const [endClampWidth, setEndClampWidth] = useState(40);
-  const [buffer, setBuffer] = useState(15);
+  const [modules, setModules] = useState(savedSettings?.modules ?? 3);
+  const [moduleWidth, setModuleWidth] = useState(savedSettings?.moduleWidth ?? 1303);
+  const [midClamp, setMidClamp] = useState(savedSettings?.midClamp ?? 20);
+  const [endClampWidth, setEndClampWidth] = useState(savedSettings?.endClampWidth ?? 40);
+  const [buffer, setBuffer] = useState(savedSettings?.buffer ?? 15);
   const computedRequired = useMemo(
     () => requiredRailLength({ modules, moduleWidth, midClamp, endClampWidth, buffer }),
     [modules, moduleWidth, midClamp, endClampWidth, buffer]
   );
 
   // Direct override for required
-  const [requiredOverride, setRequiredOverride] = useState("");
+  const [requiredOverride, setRequiredOverride] = useState(savedSettings?.requiredOverride ?? "");
   const required = useMemo(() => {
     const v = Number(requiredOverride);
     return Number.isFinite(v) && v > 0 ? Math.round(v) : computedRequired;
   }, [requiredOverride, computedRequired]);
 
   // Optimizer knobs
-  const [lengthsInput, setLengthsInput] = useState(DEFAULT_LENGTHS.join(", "));
+  const [lengthsInput, setLengthsInput] = useState(savedSettings?.lengthsInput ?? DEFAULT_LENGTHS.join(", "));
   // Track which lengths are enabled (true = use, false = ignore)
   const [enabledLengths, setEnabledLengths] = useState(() => {
+    if (savedSettings?.enabledLengths) {
+      return savedSettings.enabledLengths;
+    }
     const initial = {};
     DEFAULT_LENGTHS.forEach(len => initial[len] = true);
     return initial;
   });
-  const [maxPieces, setMaxPieces] = useState(3);          // <= 3 pieces (2 joints)
-  const [maxWastePct, setMaxWastePct] = useState("");     // Optional: e.g., 0.02 for 2% max waste
-  const [alphaJoint, setAlphaJoint] = useState(220);
-  const [betaSmall, setBetaSmall] = useState(60);
-  const [allowUndershootPct, setAllowUndershootPct] = useState(0);
-  const [gammaShort, setGammaShort] = useState(5);
+  const [maxPieces, setMaxPieces] = useState(savedSettings?.maxPieces ?? 3);
+  const [maxWastePct, setMaxWastePct] = useState(savedSettings?.maxWastePct ?? "");
+  const [alphaJoint, setAlphaJoint] = useState(savedSettings?.alphaJoint ?? 220);
+  const [betaSmall, setBetaSmall] = useState(savedSettings?.betaSmall ?? 60);
+  const [allowUndershootPct, setAllowUndershootPct] = useState(savedSettings?.allowUndershootPct ?? 0);
+  const [gammaShort, setGammaShort] = useState(savedSettings?.gammaShort ?? 5);
 
   // Cost parameters for BOM
-  const [costPerMm, setCostPerMm] = useState("0.1");     // Cost per mm of rail
-  const [costPerJointSet, setCostPerJointSet] = useState("50"); // Cost per joint connector set
-  const [joinerLength, setJoinerLength] = useState("100"); // Length of each joiner in mm
+  const [costPerMm, setCostPerMm] = useState(savedSettings?.costPerMm ?? "0.1");
+  const [costPerJointSet, setCostPerJointSet] = useState(savedSettings?.costPerJointSet ?? "50");
+  const [joinerLength, setJoinerLength] = useState(savedSettings?.joinerLength ?? "100");
 
   // Priority selection for optimization
-  const [priority, setPriority] = useState('length'); // 'length', 'joints'
+  const [priority, setPriority] = useState(savedSettings?.priority ?? 'length');
+
+  // Current settings object
+  const currentSettings = {
+    userMode,
+    modules,
+    moduleWidth,
+    midClamp,
+    endClampWidth,
+    buffer,
+    requiredOverride,
+    lengthsInput,
+    enabledLengths,
+    maxPieces,
+    maxWastePct,
+    alphaJoint,
+    betaSmall,
+    allowUndershootPct,
+    gammaShort,
+    costPerMm,
+    costPerJointSet,
+    joinerLength,
+    priority
+  };
+
+  // Save settings whenever they change
+  useEffect(() => {
+    saveSettings(currentSettings);
+  }, [
+    userMode, modules, moduleWidth, midClamp, endClampWidth, buffer,
+    requiredOverride, lengthsInput, enabledLengths, maxPieces, maxWastePct,
+    alphaJoint, betaSmall, allowUndershootPct, gammaShort,
+    costPerMm, costPerJointSet, joinerLength, priority
+  ]);
+
+  // Export settings to file
+  const handleExport = () => {
+    exportToFile(currentSettings);
+  };
+
+  // Import settings from file
+  const handleImport = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const imported = JSON.parse(e.target.result);
+
+        // Apply imported settings
+        if (imported.userMode) setUserMode(imported.userMode);
+        if (imported.modules !== undefined) setModules(imported.modules);
+        if (imported.moduleWidth !== undefined) setModuleWidth(imported.moduleWidth);
+        if (imported.midClamp !== undefined) setMidClamp(imported.midClamp);
+        if (imported.endClampWidth !== undefined) setEndClampWidth(imported.endClampWidth);
+        if (imported.buffer !== undefined) setBuffer(imported.buffer);
+        if (imported.requiredOverride !== undefined) setRequiredOverride(imported.requiredOverride);
+        if (imported.lengthsInput) setLengthsInput(imported.lengthsInput);
+        if (imported.enabledLengths) setEnabledLengths(imported.enabledLengths);
+        if (imported.maxPieces !== undefined) setMaxPieces(imported.maxPieces);
+        if (imported.maxWastePct !== undefined) setMaxWastePct(imported.maxWastePct);
+        if (imported.alphaJoint !== undefined) setAlphaJoint(imported.alphaJoint);
+        if (imported.betaSmall !== undefined) setBetaSmall(imported.betaSmall);
+        if (imported.allowUndershootPct !== undefined) setAllowUndershootPct(imported.allowUndershootPct);
+        if (imported.gammaShort !== undefined) setGammaShort(imported.gammaShort);
+        if (imported.costPerMm !== undefined) setCostPerMm(imported.costPerMm);
+        if (imported.costPerJointSet !== undefined) setCostPerJointSet(imported.costPerJointSet);
+        if (imported.joinerLength !== undefined) setJoinerLength(imported.joinerLength);
+        if (imported.priority) setPriority(imported.priority);
+
+        alert('Settings imported successfully!');
+      } catch (err) {
+        alert('Failed to import settings. Invalid file format.');
+        console.error('Import error:', err);
+      }
+    };
+    reader.readAsText(file);
+
+    // Reset file input
+    event.target.value = '';
+  };
+
+  // Reset to defaults
+  const handleReset = () => {
+    if (confirm('Reset all settings to defaults?')) {
+      setUserMode('normal');
+      setModules(3);
+      setModuleWidth(1303);
+      setMidClamp(20);
+      setEndClampWidth(40);
+      setBuffer(15);
+      setRequiredOverride('');
+      setLengthsInput(DEFAULT_LENGTHS.join(', '));
+      const defaultEnabled = {};
+      DEFAULT_LENGTHS.forEach(len => defaultEnabled[len] = true);
+      setEnabledLengths(defaultEnabled);
+      setMaxPieces(3);
+      setMaxWastePct('');
+      setAlphaJoint(220);
+      setBetaSmall(60);
+      setAllowUndershootPct(0);
+      setGammaShort(5);
+      setCostPerMm('0.1');
+      setCostPerJointSet('50');
+      setJoinerLength('100');
+      setPriority('length');
+    }
+  };
 
   const parsedLengths = useMemo(
     () => parseNumList(lengthsInput).filter(len => enabledLengths[len] !== false),
@@ -198,6 +349,31 @@ export default function App() {
                       </div>
                     </label>
                   </div>
+                  <div className="mt-4 pt-3 border-t space-y-2">
+                    <button
+                      onClick={handleExport}
+                      className="w-full py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700"
+                    >
+                      Export Settings
+                    </button>
+                    <label className="block">
+                      <span className="w-full py-2 text-sm font-medium text-purple-600 border border-purple-600 rounded-lg hover:bg-purple-50 cursor-pointer block text-center">
+                        Import Settings
+                      </span>
+                      <input
+                        type="file"
+                        accept=".json"
+                        onChange={handleImport}
+                        className="hidden"
+                      />
+                    </label>
+                    <button
+                      onClick={handleReset}
+                      className="w-full py-2 text-sm font-medium text-red-600 border border-red-300 rounded-lg hover:bg-red-50"
+                    >
+                      Reset to Defaults
+                    </button>
+                  </div>
                   <button
                     onClick={() => setShowSettings(false)}
                     className="mt-3 w-full py-2 text-sm font-medium text-gray-600 hover:text-gray-800"
@@ -337,8 +513,14 @@ export default function App() {
                     <KV label="Total Length with Joiners (mm)" value={fmt(bestResult.totalLengthWithJoiners)} />
                   </>
                 )}
-                <KV label="Overshoot (mm)" value={fmt(bestResult.actualOvershoot)} />
-                <KV label="% Extra Length" value={`${extraPct.toFixed(2)}%`} />
+                <div className="flex justify-between text-sm">
+                  <span className="text-red-600">Overshoot (mm)</span>
+                  <span className="font-medium text-red-600">{fmt(bestResult.actualOvershoot)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-red-600">% Extra Length</span>
+                  <span className="font-medium text-red-600">{extraPct.toFixed(2)}%</span>
+                </div>
                 <KV label="Pieces" value={bestResult.pieces} />
                 <KV label="Joints" value={bestResult.joints} />
                 {userMode === 'advanced' && <KV label="Small Pieces" value={bestResult.smallCount} />}
