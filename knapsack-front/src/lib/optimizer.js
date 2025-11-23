@@ -12,8 +12,9 @@
  *  alphaJoint?: number                         - penalty per joint (pieces - 1), in "mm units"
  *  betaSmall?: number                          - penalty per piece chosen from smallLengths
  *  gammaShort?: number                         - penalty per mm of undershoot
- *  costPerMeter?: number                       - actual cost per meter of rail (for BOM)
+ *  costPerMm?: number                          - actual cost per mm of rail (for BOM)
  *  costPerJointSet?: number                    - actual cost per joint connector set (for BOM)
+ *  joinerLength?: number                       - length of each joiner in mm
  */
 export function optimizeCuts({
   required,
@@ -25,8 +26,9 @@ export function optimizeCuts({
   alphaJoint = 220,
   betaSmall = 60,
   gammaShort = 5,
-  costPerMeter = 0,
-  costPerJointSet = 0
+  costPerMm = 0,
+  costPerJointSet = 0,
+  joinerLength = 0
 }) {
   const L = Array.from(new Set(lengths)).filter(x => Number.isFinite(x) && x > 0).sort((a,b)=>a-b);
   if (L.length === 0) return { ok:false, reason:"No valid cut lengths." };
@@ -122,11 +124,17 @@ export function optimizeCuts({
   const countsByLength = {};
   for (const len of plan) countsByLength[len] = (countsByLength[len] || 0) + 1;
 
+  // Calculate lengths including joiners
+  const joinerTotalLength = bestCand.joints * joinerLength;  // Total length of all joiners
+  const totalLengthWithJoiners = bestCand.s.total + joinerTotalLength;  // Rail + Joiners
+  const actualOvershoot = Math.max(0, totalLengthWithJoiners - R);  // Overshoot including joiners
+  const actualShortage = totalLengthWithJoiners >= R ? 0 : (R - totalLengthWithJoiners);
+
   // Calculate actual costs for BOM
-  const totalMeters = bestCand.s.total / 1000;
-  const materialCost = totalMeters * costPerMeter;
-  const jointCost = bestCand.joints * costPerJointSet;
-  const totalActualCost = materialCost + jointCost;
+  const materialCost = bestCand.s.total * costPerMm;
+  const extraCost = actualOvershoot * costPerMm;  // Cost of extra/wasted mm (including joiners)
+  const jointSetCost = bestCand.joints * costPerJointSet;  // Cost of joint hardware
+  const totalActualCost = materialCost + jointSetCost;
 
   return {
     ok: true,
@@ -139,9 +147,15 @@ export function optimizeCuts({
     joints: bestCand.joints,
     smallCount: plan.filter(x => smallSet.has(x)).length,
     cost: bestCand.cost,
+    // Lengths including joiners
+    joinerTotalLength,
+    totalLengthWithJoiners,
+    actualOvershoot,
+    actualShortage,
     // Actual costs for BOM
     materialCost,
-    jointCost,
+    extraCost,
+    jointSetCost,
     totalActualCost
   };
 

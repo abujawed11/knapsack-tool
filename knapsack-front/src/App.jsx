@@ -39,8 +39,9 @@ export default function App() {
   const [gammaShort, setGammaShort] = useState(5);
 
   // Cost parameters for BOM
-  const [costPerMeter, setCostPerMeter] = useState(100);     // Cost per meter of rail
-  const [costPerJointSet, setCostPerJointSet] = useState(50); // Cost per joint connector set
+  const [costPerMm, setCostPerMm] = useState("0.1");     // Cost per mm of rail
+  const [costPerJointSet, setCostPerJointSet] = useState("50"); // Cost per joint connector set
+  const [joinerLength, setJoinerLength] = useState("100"); // Length of each joiner in mm
 
   // Priority selection for optimization
   const [priority, setPriority] = useState('length'); // 'length', 'joints'
@@ -66,10 +67,11 @@ export default function App() {
       alphaJoint: Number(alphaJoint) || 0,
       betaSmall: Number(betaSmall) || 0,
       gammaShort: Number(gammaShort) || 0,
-      costPerMeter: Number(costPerMeter) || 0,
-      costPerJointSet: Number(costPerJointSet) || 0
+      costPerMm: Number(costPerMm) || 0,
+      costPerJointSet: Number(costPerJointSet) || 0,
+      joinerLength: Number(joinerLength) || 0
     });
-  }, [required, parsedLengths, parsedSmall, maxPieces, maxWastePct, allowUndershootPct, alphaJoint, betaSmall, gammaShort, costPerMeter, costPerJointSet]);
+  }, [required, parsedLengths, parsedSmall, maxPieces, maxWastePct, allowUndershootPct, alphaJoint, betaSmall, gammaShort, costPerMm, costPerJointSet, joinerLength]);
 
   // Generate scenarios for comparison
   const scenarios = useMemo(() => {
@@ -83,8 +85,9 @@ export default function App() {
       alphaJoint: Number(alphaJoint) || 0,
       betaSmall: Number(betaSmall) || 0,
       gammaShort: Number(gammaShort) || 0,
-      costPerMeter: Number(costPerMeter) || 0,
-      costPerJointSet: Number(costPerJointSet) || 0
+      costPerMm: Number(costPerMm) || 0,
+      costPerJointSet: Number(costPerJointSet) || 0,
+      joinerLength: Number(joinerLength) || 0
     });
 
     // Sort and mark best based on priority
@@ -104,7 +107,7 @@ export default function App() {
     }
 
     return sorted;
-  }, [required, parsedLengths, parsedSmall, allowUndershootPct, maxWastePct, alphaJoint, betaSmall, gammaShort, costPerMeter, costPerJointSet, priority]);
+  }, [required, parsedLengths, parsedSmall, allowUndershootPct, maxWastePct, alphaJoint, betaSmall, gammaShort, costPerMm, costPerJointSet, joinerLength, priority]);
 
   // Get the best result based on priority (from scenarios)
   const bestResult = useMemo(() => {
@@ -117,7 +120,7 @@ export default function App() {
   const extraPct = useMemo(() => {
     if (!bestResult || !bestResult.ok) return 0;
     if (required <= 0) return 0;
-    return (bestResult.extra / required) * 100;
+    return (bestResult.actualOvershoot / required) * 100;
   }, [bestResult, required]);
 
   return (
@@ -130,7 +133,7 @@ export default function App() {
               href="/benchmark-test.html"
               target="_blank"
               rel="noopener noreferrer"
-              className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-purple-600 to-purple-700 rounded-lg hover:from-purple-700 hover:to-purple-800 transition-all shadow-sm hover:shadow-md"
+              className="px-4 py-2 text-sm font-medium text-white bg-linear-to-r from-purple-600 to-purple-700 rounded-lg hover:from-purple-700 hover:to-purple-800 transition-all shadow-sm hover:shadow-md"
             >
               Performance Benchmark
             </a>
@@ -226,8 +229,9 @@ export default function App() {
 
           <Card title="3) Cost Settings (for BOM)">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <NumberField label="Cost per Meter (currency)" value={costPerMeter} setValue={setCostPerMeter} />
-              <NumberField label="Cost per Joint Set (currency)" value={costPerJointSet} setValue={setCostPerJointSet} />
+              <TextField label="Cost per mm (currency)" value={costPerMm} setValue={setCostPerMm} />
+              <TextField label="Cost per Joint Set (currency)" value={costPerJointSet} setValue={setCostPerJointSet} />
+              <TextField label="Joiner Length (mm)" value={joinerLength} setValue={setJoinerLength} />
             </div>
 
             <div className="mt-4 pt-4 border-t">
@@ -269,8 +273,14 @@ export default function App() {
                   Optimized for: {priority === 'length' ? 'Lesser Rail Length' : 'Lesser Joints'}
                 </div>
                 <KV label="Required (mm)" value={fmt(required)} />
-                <KV label="Total Chosen (mm)" value={fmt(bestResult.total)} />
-                <KV label="Overshoot (mm)" value={fmt(bestResult.extra)} />
+                <KV label="Total Rail Length (mm)" value={fmt(bestResult.total)} />
+                {bestResult.joints > 0 && (
+                  <>
+                    <KV label="Joiner Length (mm)" value={fmt(bestResult.joinerTotalLength)} />
+                    <KV label="Total Length with Joiners (mm)" value={fmt(bestResult.totalLengthWithJoiners)} />
+                  </>
+                )}
+                <KV label="Overshoot (mm)" value={fmt(bestResult.actualOvershoot)} />
                 <KV label="% Extra Length" value={`${extraPct.toFixed(2)}%`} />
                 <KV label="Pieces" value={bestResult.pieces} />
                 <KV label="Joints" value={bestResult.joints} />
@@ -280,13 +290,23 @@ export default function App() {
                 <div className="pt-3 mt-3 border-t">
                   <h4 className="text-sm font-semibold mb-2">Cost Breakdown</h4>
                   <div className="space-y-2">
-                    <KV label="Material Cost" value={`${bestResult.materialCost.toFixed(2)}`} />
-                    <KV label="Joint Cost" value={`${bestResult.jointCost.toFixed(2)}`} />
+                    <KV label="Rail Material Cost" value={`${bestResult.materialCost.toFixed(2)}`} />
+                    {bestResult.joints > 0 && (
+                      <KV label="Joint Set Cost" value={`${bestResult.jointSetCost.toFixed(2)}`} />
+                    )}
                     <div className="flex justify-between text-sm font-semibold pt-1 border-t">
                       <span className="text-gray-800">Total Cost</span>
                       <span className="text-green-600">{bestResult.totalActualCost.toFixed(2)}</span>
                     </div>
                   </div>
+                  {bestResult.extraCost > 0 && (
+                    <div className="mt-3 pt-2 border-t border-red-200">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-red-600">Extra Cost (waste)</span>
+                        <span className="font-medium text-red-600">{bestResult.extraCost.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="pt-2">
                   <h4 className="text-sm font-semibold mb-2">Chosen Pieces</h4>
@@ -357,7 +377,7 @@ export default function App() {
                     <div className="mt-2 pt-2 border-t border-gray-200">
                       <div className="flex justify-between text-xs">
                         <span className="text-gray-500">Material: {scenario.materialCost.toFixed(2)}</span>
-                        <span className="text-gray-500">Joints: {scenario.jointCost.toFixed(2)}</span>
+                        <span className="text-gray-500">Joints: {scenario.jointSetCost.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between mt-1">
                         <span className="text-sm font-semibold text-gray-700">Total Cost</span>
