@@ -40,7 +40,7 @@ export default function App() {
         setUserMode={(mode) => updateSetting('userMode', mode)}
       />
 
-      <main className="mx-auto max-w-7xl px-4 py-6">
+      <main className="mx-auto max-w-[80%] px-4 py-6">
         {/* Top: Global Inputs */}
         <div className="mb-6">
           <GlobalInputs settings={settings} setSettings={setSettings} />
