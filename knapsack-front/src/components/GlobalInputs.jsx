@@ -10,7 +10,8 @@ export default function GlobalInputs({ settings, setSettings }) {
     buffer,
     lengthsInput,
     enabledLengths,
-    userMode
+    userMode,
+    priority
   } = settings;
 
   const allLengths = parseNumList(lengthsInput);
@@ -48,7 +49,7 @@ export default function GlobalInputs({ settings, setSettings }) {
       <h2 className="text-lg font-semibold mb-4">Global Parameters</h2>
 
       {/* Primary Inputs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
         <div>
           <label className="block text-sm text-gray-600 mb-1">Module Width (mm)</label>
           <input
@@ -85,11 +86,34 @@ export default function GlobalInputs({ settings, setSettings }) {
             className="w-full rounded-lg border px-3 py-2 text-center font-medium"
           />
         </div>
+        <div>
+          <label className="block text-sm text-gray-600 mb-1">Priority</label>
+          <div className="flex gap-3">
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="radio"
+                checked={priority === 'length'}
+                onChange={() => updateSetting('priority', 'length')}
+                className="w-4 h-4 text-purple-600"
+              />
+              <span className="text-sm">Length</span>
+            </label>
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="radio"
+                checked={priority === 'joints'}
+                onChange={() => updateSetting('priority', 'joints')}
+                className="w-4 h-4 text-purple-600"
+              />
+              <span className="text-sm">Joints</span>
+            </label>
+          </div>
+        </div>
       </div>
 
       {/* Length Selection */}
       <div>
-        <div className="flex justify-between items-center mb-2">
+        <div className="flex items-center mb-2 gap-4">
           <span className="text-sm text-gray-600">
             Available Cut Lengths ({enabledCount}/{allLengths.length} selected)
           </span>

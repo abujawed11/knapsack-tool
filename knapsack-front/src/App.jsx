@@ -2,10 +2,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import Header from './components/Header';
 import GlobalInputs from './components/GlobalInputs';
-import SettingsPanel from './components/SettingsPanel';
 import RailTable from './components/RailTable';
 import ResultCard from './components/ResultCard';
-import { loadSettings, saveSettings, DEFAULT_SETTINGS, DEFAULT_LENGTHS } from './lib/storage';
+import { loadSettings, saveSettings } from './lib/storage';
 
 export default function App() {
   // Load saved settings
@@ -14,11 +13,25 @@ export default function App() {
   // Settings state
   const [settings, setSettings] = useState(savedSettings);
 
-  // Table rows state - start empty, user adds rows manually
-  const [rows, setRows] = useState([]);
+  // Table rows state - load from localStorage or start empty
+  const [rows, setRows] = useState(() => {
+    try {
+      const saved = localStorage.getItem('railOptimizer_rows');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
 
   // Selected row for detail view
-  const [selectedRowId, setSelectedRowId] = useState(null);
+  const [selectedRowId, setSelectedRowId] = useState(() => {
+    try {
+      const saved = localStorage.getItem('railOptimizer_selectedRowId');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
 
   // Get selected row
   const selectedRow = rows.find(r => r.id === selectedRowId);
@@ -27,6 +40,16 @@ export default function App() {
   useEffect(() => {
     saveSettings(settings);
   }, [settings]);
+
+  // Save rows whenever they change
+  useEffect(() => {
+    localStorage.setItem('railOptimizer_rows', JSON.stringify(rows));
+  }, [rows]);
+
+  // Save selected row ID whenever it changes
+  useEffect(() => {
+    localStorage.setItem('railOptimizer_selectedRowId', JSON.stringify(selectedRowId));
+  }, [selectedRowId]);
 
   // Update a single setting
   const updateSetting = (key, value) => {
@@ -38,6 +61,8 @@ export default function App() {
       <Header
         userMode={settings.userMode}
         setUserMode={(mode) => updateSetting('userMode', mode)}
+        settings={settings}
+        setSettings={setSettings}
       />
 
       <main className="mx-auto max-w-[80%] px-4 py-6">
@@ -46,21 +71,17 @@ export default function App() {
           <GlobalInputs settings={settings} setSettings={setSettings} />
         </div>
 
-        {/* Main Content: 3-column layout */}
+        {/* Main Content: 2-column layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Left: Settings Panel */}
-          <aside className="lg:col-span-3">
-            <SettingsPanel settings={settings} setSettings={setSettings} />
-          </aside>
-
-          {/* Center: Rail Table */}
-          <section className="lg:col-span-6">
+          {/* Left: Rail Table */}
+          <section className="lg:col-span-9">
             <RailTable
               rows={rows}
               setRows={setRows}
               selectedRowId={selectedRowId}
               setSelectedRowId={setSelectedRowId}
               settings={settings}
+              setSettings={setSettings}
             />
           </section>
 

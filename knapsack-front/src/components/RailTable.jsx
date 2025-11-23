@@ -1,16 +1,21 @@
 // src/components/RailTable.jsx
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { optimizeCuts, requiredRailLength, generateScenarios } from '../lib/optimizer';
 import { parseNumList, fmt } from '../lib/storage';
+import { TextField, NumberField } from './ui';
 
 export default function RailTable({
   rows,
   setRows,
   selectedRowId,
   setSelectedRowId,
-  settings
+  settings,
+  setSettings
 }) {
+  const [showSettings, setShowSettings] = useState(false);
+
   const {
+    userMode,
     moduleWidth,
     midClamp,
     endClampWidth,
@@ -28,6 +33,10 @@ export default function RailTable({
     joinerLength,
     priority
   } = settings;
+
+  const updateSetting = (key, value) => {
+    setSettings(prev => ({ ...prev, [key]: value }));
+  };
 
   const parsedLengths = useMemo(
     () => parseNumList(lengthsInput).filter(len => enabledLengths[len] !== false),
@@ -105,15 +114,124 @@ export default function RailTable({
   };
 
   return (
-    <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
+    <div className="bg-white rounded-2xl border shadow-sm">
       <div className="flex justify-between items-center px-4 py-3 border-b">
         <h2 className="font-semibold">Rail Calculations</h2>
-        <button
-          onClick={addRow}
-          className="px-3 py-1.5 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700"
-        >
-          + Add Row
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={addRow}
+            className="px-3 py-1.5 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700"
+          >
+            + Add Row
+          </button>
+          <div className="relative">
+            <button
+              onClick={() => setShowSettings(!showSettings)}
+              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              title="Settings"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5 text-gray-600"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </button>
+            {showSettings && (
+              <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-gray-200 z-50 overflow-hidden">
+                {/* Header */}
+                <div className="bg-gradient-to-r from-purple-600 to-purple-700 px-4 py-3">
+                  <h3 className="text-white font-semibold flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                    </svg>
+                    Calculation Settings
+                  </h3>
+                </div>
+
+                <div className="p-4 max-h-96 overflow-y-auto">
+                  {/* Cost & Optimization Settings */}
+                  <div className="mb-4">
+                    <h4 className="text-xs font-semibold text-purple-600 uppercase tracking-wide mb-3">Cost & Limits</h4>
+                    <div className="space-y-3 bg-gray-50 rounded-lg p-3">
+                      <TextField
+                        label="Cost per mm"
+                        value={costPerMm}
+                        setValue={(v) => updateSetting('costPerMm', v)}
+                      />
+                      <TextField
+                        label="Cost per Joint Set"
+                        value={costPerJointSet}
+                        setValue={(v) => updateSetting('costPerJointSet', v)}
+                      />
+                      <TextField
+                        label="Joiner Length (mm)"
+                        value={joinerLength}
+                        setValue={(v) => updateSetting('joinerLength', v)}
+                      />
+                      <NumberField
+                        label="Max Pieces"
+                        value={maxPieces}
+                        setValue={(v) => updateSetting('maxPieces', v)}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Advanced Settings */}
+                  {userMode === 'advanced' && (
+                    <div className="mb-4">
+                      <h4 className="text-xs font-semibold text-orange-600 uppercase tracking-wide mb-3">Advanced Tuning</h4>
+                      <div className="space-y-3 bg-orange-50 rounded-lg p-3">
+                        <NumberField
+                          label="Max Waste %"
+                          value={maxWastePct}
+                          setValue={(v) => updateSetting('maxWastePct', v)}
+                          step={0.01}
+                        />
+                        <NumberField
+                          label="α Joint Penalty"
+                          value={alphaJoint}
+                          setValue={(v) => updateSetting('alphaJoint', v)}
+                        />
+                        <NumberField
+                          label="β Small Penalty"
+                          value={betaSmall}
+                          setValue={(v) => updateSetting('betaSmall', v)}
+                        />
+                        <NumberField
+                          label="Allow Undershoot %"
+                          value={allowUndershootPct}
+                          setValue={(v) => updateSetting('allowUndershootPct', v)}
+                        />
+                        <NumberField
+                          label="γ Shortage Penalty"
+                          value={gammaShort}
+                          setValue={(v) => updateSetting('gammaShort', v)}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer */}
+                <div className="border-t bg-gray-50 px-4 py-3">
+                  <button
+                    onClick={() => setShowSettings(false)}
+                    className="w-full py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition-colors"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="overflow-x-auto">
