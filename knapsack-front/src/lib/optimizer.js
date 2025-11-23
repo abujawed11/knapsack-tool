@@ -12,6 +12,8 @@
  *  alphaJoint?: number                         - penalty per joint (pieces - 1), in "mm units"
  *  betaSmall?: number                          - penalty per piece chosen from smallLengths
  *  gammaShort?: number                         - penalty per mm of undershoot
+ *  costPerMeter?: number                       - actual cost per meter of rail (for BOM)
+ *  costPerJointSet?: number                    - actual cost per joint connector set (for BOM)
  */
 export function optimizeCuts({
   required,
@@ -22,7 +24,9 @@ export function optimizeCuts({
   maxWastePct,
   alphaJoint = 220,
   betaSmall = 60,
-  gammaShort = 5
+  gammaShort = 5,
+  costPerMeter = 0,
+  costPerJointSet = 0
 }) {
   const L = Array.from(new Set(lengths)).filter(x => Number.isFinite(x) && x > 0).sort((a,b)=>a-b);
   if (L.length === 0) return { ok:false, reason:"No valid cut lengths." };
@@ -118,6 +122,12 @@ export function optimizeCuts({
   const countsByLength = {};
   for (const len of plan) countsByLength[len] = (countsByLength[len] || 0) + 1;
 
+  // Calculate actual costs for BOM
+  const totalMeters = bestCand.s.total / 1000;
+  const materialCost = totalMeters * costPerMeter;
+  const jointCost = bestCand.joints * costPerJointSet;
+  const totalActualCost = materialCost + jointCost;
+
   return {
     ok: true,
     plan,
@@ -128,7 +138,11 @@ export function optimizeCuts({
     pieces: plan.length,
     joints: bestCand.joints,
     smallCount: plan.filter(x => smallSet.has(x)).length,
-    cost: bestCand.cost
+    cost: bestCand.cost,
+    // Actual costs for BOM
+    materialCost,
+    jointCost,
+    totalActualCost
   };
 
   // DP tie-breaker: prefer fewer pieces, then fewer small, then shorter total
@@ -147,4 +161,80 @@ export function requiredRailLength({ modules, moduleWidth, midClamp, endClampWid
   const EC = Number(endClampWidth) || 0;
   const BF = Number(buffer) || 0;
   return m*MW + (m>0 ? (m-1)*MC : 0) + 2*EC + 2*BF;
+}
+
+/**
+ * Generate multiple scenarios for cost comparison
+ * Returns scenarios with different piece/joint trade-offs
+ */
+export function generateScenarios(baseConfig) {
+  const scenarios = [];
+  const maxL = Math.max(...baseConfig.lengths);
+  const minPossiblePieces = Math.ceil(baseConfig.required / maxL);
+
+  // Generate scenarios with different maxPieces values
+  for (let pieces = minPossiblePieces; pieces <= Math.min(minPossiblePieces + 4, 8); pieces++) {
+    const result = optimizeCuts({
+      ...baseConfig,
+      maxPieces: pieces
+    });
+
+    if (result.ok) {
+      scenarios.push({
+        ...result,
+        maxPiecesUsed: pieces,
+        label: pieces === minPossiblePieces
+          ? 'Minimum Joints'
+          : pieces === minPossiblePieces + 1
+            ? 'Balanced'
+            : `${pieces} Pieces (${pieces - 1} joints)`
+      });
+    }
+  }
+
+  // Also try with different alpha values to get varied solutions
+  const alphaVariations = [0, 100, 500, 1000];
+  for (const alpha of alphaVariations) {
+    for (let pieces = minPossiblePieces; pieces <= Math.min(minPossiblePieces + 2, 6); pieces++) {
+      const result = optimizeCuts({
+        ...baseConfig,
+        maxPieces: pieces,
+        alphaJoint: alpha
+      });
+
+      if (result.ok) {
+        scenarios.push({
+          ...result,
+          maxPiecesUsed: pieces,
+          label: alpha === 0
+            ? `${pieces} Pieces (minimize waste)`
+            : alpha >= 500
+              ? `${pieces} Pieces (minimize joints)`
+              : `${pieces} Pieces`
+        });
+      }
+    }
+  }
+
+  // Remove duplicates (same plan)
+  const uniqueScenarios = [];
+  const seenPlans = new Set();
+
+  for (const scenario of scenarios) {
+    const planKey = scenario.plan.join(',');
+    if (!seenPlans.has(planKey)) {
+      seenPlans.add(planKey);
+      uniqueScenarios.push(scenario);
+    }
+  }
+
+  // Sort by total cost by default
+  uniqueScenarios.sort((a, b) => a.totalActualCost - b.totalActualCost);
+
+  // Mark the cheapest
+  if (uniqueScenarios.length > 0) {
+    uniqueScenarios[0].isCheapest = true;
+  }
+
+  return uniqueScenarios;
 }

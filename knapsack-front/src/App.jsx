@@ -1,11 +1,15 @@
 // src/App.jsx
 import { useMemo, useState } from "react";
-import { optimizeCuts, requiredRailLength } from "./lib/optimizer";
+import { optimizeCuts, requiredRailLength, generateScenarios } from "./lib/optimizer";
 
 const DEFAULT_LENGTHS = [1595, 1798, 2400, 2750, 3200, 3600, 4800];
 const DEFAULT_SMALL = [1595, 1798, 2400];
 
 export default function App() {
+  // User mode: 'normal' or 'advanced'
+  const [userMode, setUserMode] = useState('normal');
+  const [showSettings, setShowSettings] = useState(false);
+
   // Excel-like inputs
   const [modules, setModules] = useState(3);
   const [moduleWidth, setModuleWidth] = useState(1303);
@@ -34,6 +38,13 @@ export default function App() {
   const [allowUndershootPct, setAllowUndershootPct] = useState(0);
   const [gammaShort, setGammaShort] = useState(5);
 
+  // Cost parameters for BOM
+  const [costPerMeter, setCostPerMeter] = useState(100);     // Cost per meter of rail
+  const [costPerJointSet, setCostPerJointSet] = useState(50); // Cost per joint connector set
+
+  // Priority selection for optimization
+  const [priority, setPriority] = useState('length'); // 'length', 'joints'
+
   const parsedLengths = useMemo(
     () => parseNumList(lengthsInput),
     [lengthsInput]
@@ -54,15 +65,60 @@ export default function App() {
       allowUndershootPct: Number(allowUndershootPct) || 0,
       alphaJoint: Number(alphaJoint) || 0,
       betaSmall: Number(betaSmall) || 0,
-      gammaShort: Number(gammaShort) || 0
+      gammaShort: Number(gammaShort) || 0,
+      costPerMeter: Number(costPerMeter) || 0,
+      costPerJointSet: Number(costPerJointSet) || 0
     });
-  }, [required, parsedLengths, parsedSmall, maxPieces, maxWastePct, allowUndershootPct, alphaJoint, betaSmall, gammaShort]);
+  }, [required, parsedLengths, parsedSmall, maxPieces, maxWastePct, allowUndershootPct, alphaJoint, betaSmall, gammaShort, costPerMeter, costPerJointSet]);
+
+  // Generate scenarios for comparison
+  const scenarios = useMemo(() => {
+    if (required <= 0 || parsedLengths.length === 0) return [];
+    const rawScenarios = generateScenarios({
+      required,
+      lengths: parsedLengths,
+      smallLengths: parsedSmall,
+      allowUndershootPct: Number(allowUndershootPct) || 0,
+      maxWastePct: Number(maxWastePct) || undefined,
+      alphaJoint: Number(alphaJoint) || 0,
+      betaSmall: Number(betaSmall) || 0,
+      gammaShort: Number(gammaShort) || 0,
+      costPerMeter: Number(costPerMeter) || 0,
+      costPerJointSet: Number(costPerJointSet) || 0
+    });
+
+    // Sort and mark best based on priority
+    const sorted = [...rawScenarios];
+
+    // Reset isBest flag
+    sorted.forEach(s => s.isBest = false);
+
+    if (priority === 'length') {
+      sorted.sort((a, b) => a.total - b.total);
+    } else if (priority === 'joints') {
+      sorted.sort((a, b) => a.joints - b.joints);
+    }
+
+    if (sorted.length > 0) {
+      sorted[0].isBest = true;
+    }
+
+    return sorted;
+  }, [required, parsedLengths, parsedSmall, allowUndershootPct, maxWastePct, alphaJoint, betaSmall, gammaShort, costPerMeter, costPerJointSet, priority]);
+
+  // Get the best result based on priority (from scenarios)
+  const bestResult = useMemo(() => {
+    if (scenarios.length > 0) {
+      return scenarios[0]; // First one is the best based on priority
+    }
+    return result; // Fallback to original result
+  }, [scenarios, result]);
 
   const extraPct = useMemo(() => {
-    if (!result.ok) return 0;
+    if (!bestResult || !bestResult.ok) return 0;
     if (required <= 0) return 0;
-    return (result.extra / required) * 100;
-  }, [result, required]);
+    return (bestResult.extra / required) * 100;
+  }, [bestResult, required]);
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
@@ -76,9 +132,58 @@ export default function App() {
               rel="noopener noreferrer"
               className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-purple-600 to-purple-700 rounded-lg hover:from-purple-700 hover:to-purple-800 transition-all shadow-sm hover:shadow-md"
             >
-              🎯 Performance Benchmark
+              Performance Benchmark
             </a>
-            <div className="text-sm text-gray-500">React + Tailwind • DP Knapsack</div>
+            <div className="relative">
+              <button
+                onClick={() => setShowSettings(!showSettings)}
+                className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                title="Settings"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                </svg>
+              </button>
+              {showSettings && (
+                <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-lg border p-4 z-50">
+                  <h3 className="font-semibold mb-3">Settings</h3>
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-gray-50">
+                      <input
+                        type="radio"
+                        name="userMode"
+                        checked={userMode === 'normal'}
+                        onChange={() => setUserMode('normal')}
+                        className="w-4 h-4 text-purple-600"
+                      />
+                      <div>
+                        <div className="font-medium text-sm">Normal User</div>
+                        <div className="text-xs text-gray-500">Simple interface</div>
+                      </div>
+                    </label>
+                    <label className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-gray-50">
+                      <input
+                        type="radio"
+                        name="userMode"
+                        checked={userMode === 'advanced'}
+                        onChange={() => setUserMode('advanced')}
+                        className="w-4 h-4 text-purple-600"
+                      />
+                      <div>
+                        <div className="font-medium text-sm">Advanced User</div>
+                        <div className="text-xs text-gray-500">All optimization controls</div>
+                      </div>
+                    </label>
+                  </div>
+                  <button
+                    onClick={() => setShowSettings(false)}
+                    className="mt-3 w-full py-2 text-sm font-medium text-gray-600 hover:text-gray-800"
+                  >
+                    Close
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -102,14 +207,53 @@ export default function App() {
           <Card title="2) Optimizer Settings">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <TextField label="Cut Lengths (mm, comma-separated)" value={lengthsInput} setValue={setLengthsInput} />
-              <TextField label="Small Lengths (discourage)" value={smallInput} setValue={setSmallInput} />
+              {userMode === 'advanced' && (
+                <TextField label="Small Lengths (discourage)" value={smallInput} setValue={setSmallInput} />
+              )}
               <NumberField label="Max Pieces (hard cap)" value={maxPieces} setValue={setMaxPieces} />
-              <NumberField label="Max Waste % (e.g., 0.02 for 2%) – optional" value={maxWastePct} setValue={setMaxWastePct} step={0.01} />
-              <NumberField label="α Joint Penalty (per joint, in mm)" value={alphaJoint} setValue={setAlphaJoint} />
-              <NumberField label="β Small Penalty (per small piece, in mm)" value={betaSmall} setValue={setBetaSmall} />
-              <NumberField label="Allow Undershoot (%)" value={allowUndershootPct} setValue={setAllowUndershootPct} />
-              <NumberField label="γ Shortage Penalty (per mm)" value={gammaShort} setValue={setGammaShort} />
-              <NumberField label="Required Override (mm) – optional" value={requiredOverride} setValue={setRequiredOverride} />
+              {userMode === 'advanced' && (
+                <>
+                  <NumberField label="Max Waste % (e.g., 0.02 for 2%) – optional" value={maxWastePct} setValue={setMaxWastePct} step={0.01} />
+                  <NumberField label="α Joint Penalty (per joint, in mm)" value={alphaJoint} setValue={setAlphaJoint} />
+                  <NumberField label="β Small Penalty (per small piece, in mm)" value={betaSmall} setValue={setBetaSmall} />
+                  <NumberField label="Allow Undershoot (%)" value={allowUndershootPct} setValue={setAllowUndershootPct} />
+                  <NumberField label="γ Shortage Penalty (per mm)" value={gammaShort} setValue={setGammaShort} />
+                  <NumberField label="Required Override (mm) – optional" value={requiredOverride} setValue={setRequiredOverride} />
+                </>
+              )}
+            </div>
+          </Card>
+
+          <Card title="3) Cost Settings (for BOM)">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <NumberField label="Cost per Meter (currency)" value={costPerMeter} setValue={setCostPerMeter} />
+              <NumberField label="Cost per Joint Set (currency)" value={costPerJointSet} setValue={setCostPerJointSet} />
+            </div>
+
+            <div className="mt-4 pt-4 border-t">
+              <h4 className="text-sm font-semibold mb-3">Optimization Priority</h4>
+              <div className="space-y-2">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="priority"
+                    checked={priority === 'length'}
+                    onChange={() => setPriority('length')}
+                    className="w-4 h-4 text-purple-600"
+                  />
+                  <span className="text-sm">Go with lesser rail length</span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="priority"
+                    checked={priority === 'joints'}
+                    onChange={() => setPriority('joints')}
+                    className="w-4 h-4 text-purple-600"
+                  />
+                  <span className="text-sm">Go with lesser joints</span>
+                </label>
+              </div>
             </div>
           </Card>
         </section>
@@ -117,24 +261,40 @@ export default function App() {
         {/* Right column: results */}
         <section className="md:col-span-1 space-y-6">
           <Card title="Result">
-            {!result.ok ? (
-              <div className="text-red-600">{result.reason || "No solution"}</div>
+            {!bestResult || !bestResult.ok ? (
+              <div className="text-red-600">{bestResult?.reason || "No solution"}</div>
             ) : (
               <div className="space-y-4">
+                <div className="text-xs text-purple-600 font-medium mb-2">
+                  Optimized for: {priority === 'length' ? 'Lesser Rail Length' : 'Lesser Joints'}
+                </div>
                 <KV label="Required (mm)" value={fmt(required)} />
-                <KV label="Total Chosen (mm)" value={fmt(result.total)} />
-                <KV label="Overshoot (mm)" value={fmt(result.extra)} />
+                <KV label="Total Chosen (mm)" value={fmt(bestResult.total)} />
+                <KV label="Overshoot (mm)" value={fmt(bestResult.extra)} />
                 <KV label="% Extra Length" value={`${extraPct.toFixed(2)}%`} />
-                <KV label="Pieces" value={result.pieces} />
-                <KV label="Joints" value={result.joints} />
-                <KV label="Small Pieces" value={result.smallCount} />
+                <KV label="Pieces" value={bestResult.pieces} />
+                <KV label="Joints" value={bestResult.joints} />
+                {userMode === 'advanced' && <KV label="Small Pieces" value={bestResult.smallCount} />}
+
+                {/* Cost Breakdown */}
+                <div className="pt-3 mt-3 border-t">
+                  <h4 className="text-sm font-semibold mb-2">Cost Breakdown</h4>
+                  <div className="space-y-2">
+                    <KV label="Material Cost" value={`${bestResult.materialCost.toFixed(2)}`} />
+                    <KV label="Joint Cost" value={`${bestResult.jointCost.toFixed(2)}`} />
+                    <div className="flex justify-between text-sm font-semibold pt-1 border-t">
+                      <span className="text-gray-800">Total Cost</span>
+                      <span className="text-green-600">{bestResult.totalActualCost.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
                 <div className="pt-2">
                   <h4 className="text-sm font-semibold mb-2">Chosen Pieces</h4>
-                  {result.plan.length === 0 ? (
+                  {bestResult.plan.length === 0 ? (
                     <div className="text-gray-500">—</div>
                   ) : (
                     <div className="flex flex-wrap gap-2">
-                      {result.plan.map((p, i) => (
+                      {bestResult.plan.map((p, i) => (
                         <span key={i} className="inline-flex items-center rounded-full border px-2 py-1 text-sm bg-white">
                           {p} mm
                         </span>
@@ -146,7 +306,7 @@ export default function App() {
                   <h4 className="text-sm font-semibold mb-2">Counts by Length</h4>
                   <table className="w-full text-sm">
                     <tbody>
-                      {Object.entries(result.countsByLength).sort((a,b)=>Number(a[0])-Number(b[0])).map(([len, ct]) => (
+                      {Object.entries(bestResult.countsByLength).sort((a,b)=>Number(a[0])-Number(b[0])).map(([len, ct]) => (
                         <tr key={len} className="border-t">
                           <td className="py-1 text-gray-600">{len} mm</td>
                           <td className="py-1 text-right font-medium">{ct}</td>
@@ -159,15 +319,82 @@ export default function App() {
             )}
           </Card>
 
-          <Card title="Tips">
-            <ul className="list-disc pl-5 text-sm text-gray-600 space-y-2">
-              <li>Raise <strong>α</strong> to reduce joints (accept a bit more waste).</li>
-              <li>Raise <strong>β</strong> to avoid small pieces.</li>
-              <li>Lower <strong>Max Pieces</strong> to strictly cap joints.</li>
-              <li>Set <strong>Max Waste %</strong> to 0.02 to enforce a 2% waste limit (hard constraint).</li>
-              <li>Set <strong>Allow Undershoot</strong> if field practice allows small shortfalls.</li>
-            </ul>
-          </Card>
+          {scenarios.length > 0 && (
+            <Card title="Scenario Comparison">
+              <div className="space-y-3">
+                {scenarios.length === 1 ? (
+                  <p className="text-xs text-gray-500 mb-3">
+                    Only one optimal solution found for this requirement.
+                  </p>
+                ) : (
+                  <p className="text-xs text-gray-500 mb-3">
+                    Sorted by: <strong>{priority === 'length' ? 'Lowest Rail Length' : 'Fewest Joints'}</strong>
+                  </p>
+                )}
+                {scenarios.map((scenario, idx) => (
+                  <div
+                    key={idx}
+                    className={`p-3 rounded-lg border ${scenario.isBest ? 'border-green-500 bg-green-50' : 'border-gray-200 bg-gray-50'}`}
+                  >
+                    <div className="flex justify-between items-center mb-2">
+                      <span className={`text-sm font-medium ${scenario.isBest ? 'text-green-700' : 'text-gray-700'}`}>
+                        {scenario.label}
+                        {scenario.isBest && (
+                          <span className="ml-2 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                            {priority === 'length' ? 'Shortest' : 'Fewest Joints'}
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="text-gray-600">
+                        <span className="font-medium">{scenario.pieces}</span> pieces, <span className="font-medium">{scenario.joints}</span> joints
+                      </div>
+                      <div className="text-right text-gray-600">
+                        {fmt(scenario.total)} mm
+                      </div>
+                    </div>
+                    <div className="mt-2 pt-2 border-t border-gray-200">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-gray-500">Material: {scenario.materialCost.toFixed(2)}</span>
+                        <span className="text-gray-500">Joints: {scenario.jointCost.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between mt-1">
+                        <span className="text-sm font-semibold text-gray-700">Total Cost</span>
+                        <span className={`text-sm font-bold ${scenario.isBest ? 'text-green-600' : 'text-gray-800'}`}>
+                          {scenario.totalActualCost.toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="mt-2 text-xs text-gray-500">
+                      Plan: {scenario.plan.map(p => `${p}mm`).join(' + ')}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {userMode === 'advanced' ? (
+            <Card title="Tips">
+              <ul className="list-disc pl-5 text-sm text-gray-600 space-y-2">
+                <li>Raise <strong>α</strong> to reduce joints (accept a bit more waste).</li>
+                <li>Raise <strong>β</strong> to avoid small pieces.</li>
+                <li>Lower <strong>Max Pieces</strong> to strictly cap joints.</li>
+                <li>Set <strong>Max Waste %</strong> to 0.02 to enforce a 2% waste limit (hard constraint).</li>
+                <li>Set <strong>Allow Undershoot</strong> if field practice allows small shortfalls.</li>
+              </ul>
+            </Card>
+          ) : (
+            <Card title="Tips">
+              <ul className="list-disc pl-5 text-sm text-gray-600 space-y-2">
+                <li>Compare scenarios above to find the cheapest option.</li>
+                <li>Fewer pieces = fewer joints = lower joint cost but higher material cost.</li>
+                <li>More pieces = more joints = lower material cost but higher joint cost.</li>
+                <li>Use the gear icon to access advanced settings.</li>
+              </ul>
+            </Card>
+          )}
         </section>
       </main>
 
