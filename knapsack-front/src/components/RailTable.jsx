@@ -93,6 +93,46 @@ export default function RailTable({
       maxWastePct, allowUndershootPct, alphaJoint, betaSmall,
       gammaShort, costPerMm, costPerJointSet, joinerLength, priority]);
 
+  // Calculate totals for all columns
+  const totals = useMemo(() => {
+    const result = {
+      required: 0,
+      total: 0,
+      joints: 0,
+      cost: 0,
+      countsByLength: {},
+      wastage: 0
+    };
+
+    // Initialize counts for all lengths
+    allLengths.forEach(len => {
+      result.countsByLength[len] = 0;
+    });
+
+    rowResults.forEach(({ required, result: rowResult }) => {
+      result.required += required;
+
+      if (rowResult?.ok) {
+        result.total += rowResult.totalLengthWithJoiners;
+        result.joints += rowResult.joints;
+        result.cost += rowResult.totalActualCost;
+        result.wastage += rowResult.actualOvershoot;
+
+        // Sum up piece counts for each length
+        allLengths.forEach(len => {
+          result.countsByLength[len] += (rowResult.countsByLength[len] || 0);
+        });
+      }
+    });
+
+    // Calculate overall wastage percentage
+    result.wastagePct = result.required > 0
+      ? ((result.wastage / result.required) * 100).toFixed(2)
+      : 0;
+
+    return result;
+  }, [rowResults, allLengths]);
+
   const addRow = () => {
     const newId = rows.length > 0 ? Math.max(...rows.map(r => r.id)) + 1 : 1;
     const lastModules = rows.length > 0 ? rows[rows.length - 1].modules : 0;
@@ -333,9 +373,71 @@ export default function RailTable({
                 );
               })
             )}
+            {/* Totals Row */}
+            {rowResults.length > 0 && (
+              <tr className="bg-purple-50 font-semibold border-t-2 border-purple-200">
+                <td className="px-3 py-2 border-b text-purple-700">Total</td>
+                <td className="px-3 py-2 text-right border-b text-purple-700">
+                  {fmt(totals.required)}
+                </td>
+                {allLengths.map(len => (
+                  <td
+                    key={len}
+                    className={`px-2 py-2 text-center border-b ${
+                      enabledLengths[len] !== false ? 'text-purple-700' : 'text-gray-300'
+                    }`}
+                  >
+                    {totals.countsByLength[len] || 0}
+                  </td>
+                ))}
+                <td className="px-3 py-2 text-right border-b text-purple-700">
+                  {fmt(totals.total)}
+                </td>
+                <td className="px-3 py-2 text-right border-b text-purple-700">
+                  {totals.wastagePct}%
+                </td>
+                <td className="px-3 py-2 text-center border-b text-purple-700">
+                  {totals.joints}
+                </td>
+                <td className="px-3 py-2 text-right border-b text-green-600">
+                  {totals.cost.toFixed(2)}
+                </td>
+                <td className="px-2 py-2 border-b"></td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
+
+      {/* Overall Summary Card */}
+      {rowResults.length > 0 && (
+        <div className="border-t bg-gradient-to-r from-purple-50 to-green-50 px-4 py-4">
+          <div className="flex justify-between items-center">
+            <div className="flex gap-8">
+              <div>
+                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Required</span>
+                <p className="text-lg font-bold text-purple-700">{fmt(totals.required)} mm</p>
+              </div>
+              <div>
+                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Rail Length</span>
+                <p className="text-lg font-bold text-purple-700">{fmt(totals.total)} mm</p>
+              </div>
+              <div>
+                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Overall Wastage</span>
+                <p className="text-lg font-bold text-red-600">{fmt(totals.wastage)} mm ({totals.wastagePct}%)</p>
+              </div>
+              <div>
+                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Joints</span>
+                <p className="text-lg font-bold text-purple-700">{totals.joints}</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Overall Cost</span>
+              <p className="text-2xl font-bold text-green-600">₹{totals.cost.toFixed(2)}</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
