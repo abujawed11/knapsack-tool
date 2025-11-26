@@ -57,11 +57,11 @@ export default function RailTable({
       });
 
       if (required <= 0 || parsedLengths.length === 0) {
-        return { row, required, result: null };
+        return { row, required, combos: null, result: null };
       }
 
-      // Generate scenarios and pick best based on priority
-      const scenarios = generateScenarios({
+      // Generate scenarios and get C, L, J combos
+      const combos = generateScenarios({
         required,
         lengths: parsedLengths,
         allowUndershootPct: Number(allowUndershootPct) || 0,
@@ -74,20 +74,23 @@ export default function RailTable({
         joinerLength: Number(joinerLength) || 0
       });
 
-      if (scenarios.length === 0) {
-        return { row, required, result: null };
+      if (!combos) {
+        return { row, required, combos: null, result: null };
       }
 
-      // Sort by priority and pick best
-      let sorted = [...scenarios];
-      if (priority === 'length') {
-        sorted.sort((a, b) => a.total - b.total);
+      // Select combo based on priority
+      let result;
+      if (priority === 'cost') {
+        result = combos.C;
+      } else if (priority === 'length') {
+        result = combos.L;
       } else if (priority === 'joints') {
-        sorted.sort((a, b) => a.joints - b.joints);
+        result = combos.J;
+      } else {
+        result = combos.C;  // Default to cost
       }
 
-      const result = sorted[0];
-      return { row, required, result };
+      return { row, required, combos, result };
     });
   }, [rows, moduleWidth, midClamp, endClampWidth, buffer, parsedLengths,
       maxWastePct, allowUndershootPct, alphaJoint, betaSmall,
@@ -113,10 +116,10 @@ export default function RailTable({
       result.required += required;
 
       if (rowResult?.ok) {
-        result.total += rowResult.totalLengthWithJoiners;
+        result.total += rowResult.totalRailLength;  // Sum of rail pieces only
         result.joints += rowResult.joints;
         result.cost += rowResult.totalActualCost;
-        result.wastage += rowResult.actualOvershoot;
+        result.wastage += rowResult.overshootMm;  // Overshoot without joiners
 
         // Sum up piece counts for each length
         allLengths.forEach(len => {
@@ -308,7 +311,7 @@ export default function RailTable({
               rowResults.map(({ row, required, result }) => {
                 const isSelected = row.id === selectedRowId;
                 const extraPct = result?.ok && required > 0
-                  ? ((result.actualOvershoot / required) * 100).toFixed(2)
+                  ? ((result.overshootMm / required) * 100).toFixed(2)
                   : '-';
 
                 return (
@@ -345,10 +348,10 @@ export default function RailTable({
                       </td>
                     ))}
                     <td className="px-3 py-2 text-right border-b font-medium">
-                      {result?.ok ? fmt(result.totalLengthWithJoiners) : '-'}
+                      {result?.ok ? fmt(result.totalRailLength) : '-'}
                     </td>
                     <td className={`px-3 py-2 text-right border-b ${
-                      result?.ok && result.actualOvershoot > 0 ? 'text-red-600' : ''
+                      result?.ok && result.overshootMm > 0 ? 'text-red-600' : ''
                     }`}>
                       {result?.ok ? `${extraPct}%` : '-'}
                     </td>

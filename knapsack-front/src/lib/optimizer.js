@@ -124,37 +124,28 @@ export function optimizeCuts({
   const countsByLength = {};
   for (const len of plan) countsByLength[len] = (countsByLength[len] || 0) + 1;
 
-  // Calculate lengths including joiners
-  const joinerTotalLength = bestCand.joints * joinerLength;  // Total length of all joiners
-  const totalLengthWithJoiners = bestCand.s.total + joinerTotalLength;  // Rail + Joiners
-  const actualOvershoot = Math.max(0, totalLengthWithJoiners - R);  // Overshoot including joiners
-  const actualShortage = totalLengthWithJoiners >= R ? 0 : (R - totalLengthWithJoiners);
+  // Calculate rail length and overshoot (jointers do NOT add to span length)
+  const totalRailLength = bestCand.s.total;  // Sum of rail pieces only
+  const overshootMm = Math.max(0, totalRailLength - R);  // Overshoot without joiners
+  const shortage = totalRailLength >= R ? 0 : (R - totalRailLength);
 
   // Calculate actual costs for BOM
-  const materialCost = bestCand.s.total * costPerMm;
-  const extraCost = actualOvershoot * costPerMm;  // Cost of extra/wasted mm (including joiners)
-  const jointSetCost = bestCand.joints * costPerJointSet;  // Cost of joint hardware
-  const totalActualCost = materialCost + jointSetCost;
+  const materialCost = totalRailLength * costPerMm;  // Cost of rail material
+  const jointSetCost = bestCand.joints * costPerJointSet;  // Cost of joint hardware (joiners)
+  const totalActualCost = materialCost + jointSetCost;  // Total cost
 
   return {
     ok: true,
     plan,
     countsByLength,
-    total: bestCand.s.total,
-    extra: bestCand.extra,
-    shortage: bestCand.shortage,
+    totalRailLength,       // Sum of rail pieces only (no jointer length)
+    overshootMm,           // Overshoot without joiners
+    shortage,              // Shortage if any
     pieces: plan.length,
     joints: bestCand.joints,
     smallCount: plan.filter(x => smallSet.has(x)).length,
-    cost: bestCand.cost,
-    // Lengths including joiners
-    joinerTotalLength,
-    totalLengthWithJoiners,
-    actualOvershoot,
-    actualShortage,
     // Actual costs for BOM
     materialCost,
-    extraCost,
     jointSetCost,
     totalActualCost
   };
@@ -178,8 +169,12 @@ export function requiredRailLength({ modules, moduleWidth, midClamp, endClampWid
 }
 
 /**
- * Generate multiple scenarios for cost comparison
- * Returns scenarios with different piece/joint trade-offs
+ * Generate multiple scenarios and compute the three best combinations:
+ * C (cost): lowest totalCost, then overshoot, then joints
+ * L (length): lowest overshoot, then cost, then joints
+ * J (joints): lowest joints, then cost, then overshoot
+ *
+ * Returns: { C, L, J, allScenarios }
  */
 export function generateScenarios(baseConfig) {
   const scenarios = [];
@@ -194,15 +189,7 @@ export function generateScenarios(baseConfig) {
     });
 
     if (result.ok) {
-      scenarios.push({
-        ...result,
-        maxPiecesUsed: pieces,
-        label: pieces === minPossiblePieces
-          ? 'Minimum Joints'
-          : pieces === minPossiblePieces + 1
-            ? 'Balanced'
-            : `${pieces} Pieces (${pieces - 1} joints)`
-      });
+      scenarios.push(result);
     }
   }
 
@@ -217,15 +204,7 @@ export function generateScenarios(baseConfig) {
       });
 
       if (result.ok) {
-        scenarios.push({
-          ...result,
-          maxPiecesUsed: pieces,
-          label: alpha === 0
-            ? `${pieces} Pieces (minimize waste)`
-            : alpha >= 500
-              ? `${pieces} Pieces (minimize joints)`
-              : `${pieces} Pieces`
-        });
+        scenarios.push(result);
       }
     }
   }
@@ -235,20 +214,44 @@ export function generateScenarios(baseConfig) {
   const seenPlans = new Set();
 
   for (const scenario of scenarios) {
-    const planKey = scenario.plan.join(',');
+    const planKey = scenario.plan.sort((a, b) => a - b).join(',');
     if (!seenPlans.has(planKey)) {
       seenPlans.add(planKey);
       uniqueScenarios.push(scenario);
     }
   }
 
-  // Sort by total cost by default
-  uniqueScenarios.sort((a, b) => a.totalActualCost - b.totalActualCost);
-
-  // Mark the cheapest
-  if (uniqueScenarios.length > 0) {
-    uniqueScenarios[0].isCheapest = true;
+  if (uniqueScenarios.length === 0) {
+    return null;
   }
 
-  return uniqueScenarios;
+  // Compute the three best combinations
+
+  // C (Cost combo): lowest totalCost, then overshoot, then joints
+  const C = [...uniqueScenarios].sort((a, b) => {
+    if (a.totalActualCost !== b.totalActualCost) return a.totalActualCost - b.totalActualCost;
+    if (a.overshootMm !== b.overshootMm) return a.overshootMm - b.overshootMm;
+    return a.joints - b.joints;
+  })[0];
+
+  // L (Length combo): lowest overshoot, then cost, then joints
+  const L = [...uniqueScenarios].sort((a, b) => {
+    if (a.overshootMm !== b.overshootMm) return a.overshootMm - b.overshootMm;
+    if (a.totalActualCost !== b.totalActualCost) return a.totalActualCost - b.totalActualCost;
+    return a.joints - b.joints;
+  })[0];
+
+  // J (Joints combo): lowest joints, then cost, then overshoot
+  const J = [...uniqueScenarios].sort((a, b) => {
+    if (a.joints !== b.joints) return a.joints - b.joints;
+    if (a.totalActualCost !== b.totalActualCost) return a.totalActualCost - b.totalActualCost;
+    return a.overshootMm - b.overshootMm;
+  })[0];
+
+  return {
+    C,  // Best cost combo
+    L,  // Best length combo
+    J,  // Best joints combo
+    allScenarios: uniqueScenarios
+  };
 }

@@ -20,7 +20,7 @@ export const DEFAULT_SETTINGS = {
   costPerMm: '0.1',
   costPerJointSet: '50',
   joinerLength: '100',
-  priority: 'length'
+  priority: 'cost'
 };
 
 // Load settings from localStorage

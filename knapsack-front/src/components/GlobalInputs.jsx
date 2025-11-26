@@ -92,6 +92,15 @@ export default function GlobalInputs({ settings, setSettings }) {
             <label className="flex items-center gap-1.5 cursor-pointer">
               <input
                 type="radio"
+                checked={priority === 'cost'}
+                onChange={() => updateSetting('priority', 'cost')}
+                className="w-4 h-4 text-purple-600"
+              />
+              <span className="text-sm">Cost</span>
+            </label>
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="radio"
                 checked={priority === 'length'}
                 onChange={() => updateSetting('priority', 'length')}
                 className="w-4 h-4 text-purple-600"

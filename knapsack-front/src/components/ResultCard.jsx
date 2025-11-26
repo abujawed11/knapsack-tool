@@ -30,7 +30,7 @@ export default function ResultCard({ row, settings }) {
     [lengthsInput, enabledLengths]
   );
 
-  const { required, result, extraPct } = useMemo(() => {
+  const { required, combos, result, extraPct } = useMemo(() => {
     const req = requiredRailLength({
       modules: row?.modules || 0,
       moduleWidth: Number(moduleWidth) || 0,
@@ -40,11 +40,11 @@ export default function ResultCard({ row, settings }) {
     });
 
     if (req <= 0 || parsedLengths.length === 0) {
-      return { required: req, result: null, extraPct: 0 };
+      return { required: req, combos: null, result: null, extraPct: 0 };
     }
 
-    // Generate scenarios and pick best based on priority
-    const scenarios = generateScenarios({
+    // Generate scenarios and get C, L, J combos
+    const combosData = generateScenarios({
       required: req,
       lengths: parsedLengths,
       allowUndershootPct: Number(allowUndershootPct) || 0,
@@ -57,24 +57,27 @@ export default function ResultCard({ row, settings }) {
       joinerLength: Number(joinerLength) || 0
     });
 
-    if (scenarios.length === 0) {
-      return { required: req, result: null, extraPct: 0 };
+    if (!combosData) {
+      return { required: req, combos: null, result: null, extraPct: 0 };
     }
 
-    // Sort by priority and pick best
-    let sorted = [...scenarios];
-    if (priority === 'length') {
-      sorted.sort((a, b) => a.total - b.total);
+    // Select combo based on priority
+    let res;
+    if (priority === 'cost') {
+      res = combosData.C;
+    } else if (priority === 'length') {
+      res = combosData.L;
     } else if (priority === 'joints') {
-      sorted.sort((a, b) => a.joints - b.joints);
+      res = combosData.J;
+    } else {
+      res = combosData.C;  // Default to cost
     }
 
-    const res = sorted[0];
     const pct = res?.ok && req > 0
-      ? (res.actualOvershoot / req) * 100
+      ? (res.overshootMm / req) * 100
       : 0;
 
-    return { required: req, result: res, extraPct: pct };
+    return { required: req, combos: combosData, result: res, extraPct: pct };
   }, [row, moduleWidth, midClamp, endClampWidth, buffer, parsedLengths,
       maxWastePct, allowUndershootPct, alphaJoint, betaSmall,
       gammaShort, costPerMm, costPerJointSet, joinerLength, priority]);
@@ -97,27 +100,59 @@ export default function ResultCard({ row, settings }) {
     );
   }
 
+  // Calculate extra cost vs cheapest option
+  const C = combos?.C;  // Always the cheapest cost combo
+  const extraCost = C ? result.totalActualCost - C.totalActualCost : 0;
+
+  // Priority display text
+  let priorityText = 'Minimum Cost';
+  if (priority === 'length') {
+    priorityText = 'Minimum Length';
+  } else if (priority === 'joints') {
+    priorityText = 'Minimum Joints';
+  }
+
   return (
     <Card title={`Result - ${row.modules} Modules`}>
       <div className="space-y-4">
         {/* Priority indicator */}
         <div className="text-xs text-purple-600 font-medium">
-          Optimized for: {priority === 'length' ? 'Lesser Rail Length' : 'Lesser Joints'}
+          Optimized for: {priorityText}
         </div>
 
-        {/* Length Details */}
+        {/* Extra cost summary (only if not cheapest) */}
+        {extraCost > 0 && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+            <div className="text-sm text-red-700 font-medium mb-1">
+              Extra Cost vs Cheapest Option: ₹{extraCost.toFixed(2)}
+            </div>
+            {priority === 'length' && (
+              <div className="text-xs text-red-600">
+                You pay ₹{extraCost.toFixed(2)} extra to reduce overshoot from {fmt(C.overshootMm)} mm to {fmt(result.overshootMm)} mm.
+              </div>
+            )}
+            {priority === 'joints' && (
+              <div className="text-xs text-red-600">
+                You pay ₹{extraCost.toFixed(2)} extra to reduce joints from {C.joints} to {result.joints}.
+              </div>
+            )}
+          </div>
+        )}
+        {extraCost <= 0 && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-2">
+            <div className="text-sm text-green-700 font-medium">
+              This is the cheapest option.
+            </div>
+          </div>
+        )}
+
+        {/* Rail Summary */}
         <div className="space-y-2">
           <KV label="Required (mm)" value={fmt(required)} />
-          <KV label="Total Rail Length (mm)" value={fmt(result.total)} />
-          {result.joints > 0 && (
-            <>
-              <KV label="Joiner Length (mm)" value={fmt(result.joinerTotalLength)} />
-              <KV label="Total with Joiners (mm)" value={fmt(result.totalLengthWithJoiners)} />
-            </>
-          )}
+          <KV label="Total Rail Length (mm)" value={fmt(result.totalRailLength)} />
           <div className="flex justify-between text-sm">
             <span className="text-red-600">Overshoot (mm)</span>
-            <span className="font-medium text-red-600">{fmt(result.actualOvershoot)}</span>
+            <span className="font-medium text-red-600">{fmt(result.overshootMm)}</span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-red-600">% Extra Length</span>
@@ -134,24 +169,37 @@ export default function ResultCard({ row, settings }) {
         <div className="pt-3 mt-3 border-t">
           <h4 className="text-sm font-semibold mb-2">Cost Breakdown</h4>
           <div className="space-y-2">
-            <KV label="Rail Material Cost" value={result.materialCost.toFixed(2)} />
+            <KV label="Rail Material Cost" value={`₹${result.materialCost.toFixed(2)}`} />
             {result.joints > 0 && (
-              <KV label="Joint Set Cost" value={result.jointSetCost.toFixed(2)} />
+              <KV label="Joint Cost" value={`₹${result.jointSetCost.toFixed(2)}`} />
             )}
             <div className="flex justify-between text-sm font-semibold pt-1 border-t">
               <span className="text-gray-800">Total Cost</span>
-              <span className="text-green-600">{result.totalActualCost.toFixed(2)}</span>
+              <span className="text-green-600">₹{result.totalActualCost.toFixed(2)}</span>
             </div>
           </div>
-          {result.extraCost > 0 && (
-            <div className="mt-3 pt-2 border-t border-red-200">
-              <div className="flex justify-between text-sm">
-                <span className="text-red-600">Extra Cost (waste)</span>
-                <span className="font-medium text-red-600">{result.extraCost.toFixed(2)}</span>
+        </div>
+
+        {/* Cheapest option mini summary */}
+        {C && (
+          <div className="pt-3 mt-3 border-t bg-gray-50 rounded-lg p-3">
+            <h4 className="text-xs font-semibold text-gray-600 mb-2">Cheapest Option Summary</h4>
+            <div className="text-xs space-y-1 text-gray-700">
+              <div className="flex justify-between">
+                <span>Cost:</span>
+                <span className="font-medium">₹{C.totalActualCost.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Overshoot:</span>
+                <span className="font-medium">{fmt(C.overshootMm)} mm</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Joints:</span>
+                <span className="font-medium">{C.joints}</span>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Chosen Pieces */}
         <div className="pt-2">
