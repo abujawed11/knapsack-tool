@@ -282,9 +282,9 @@ export default function RailTable({
           <thead className="bg-gray-50">
             <tr>
               <th className="px-3 py-2 text-left font-medium text-gray-600 border-b">Modules</th>
-              <th className="px-3 py-2 text-center font-medium text-gray-600 border-b">EC</th>
-              <th className="px-3 py-2 text-center font-medium text-gray-600 border-b">MC</th>
-              <th className="px-3 py-2 text-right font-medium text-gray-600 border-b">Required</th>
+              <th className="px-3 py-2 text-center font-medium text-gray-600 border-b cursor-help" title="End Clamp">EC</th>
+              <th className="px-3 py-2 text-center font-medium text-gray-600 border-b cursor-help" title="Mid Clamp">MC</th>
+              <th className="px-3 py-2 text-right font-medium text-gray-600 border-b cursor-help" title="Required Rail Length (mm)">Required</th>
               {allLengths.map(len => (
                 <th
                   key={len}
@@ -295,10 +295,10 @@ export default function RailTable({
                   {len}
                 </th>
               ))}
-              <th className="px-3 py-2 text-right font-medium text-gray-600 border-b">Total</th>
-              <th className="px-3 py-2 text-right font-medium text-gray-600 border-b">Difference</th>
-              <th className="px-3 py-2 text-right font-medium text-gray-600 border-b">% Extra</th>
-              <th className="px-3 py-2 text-center font-medium text-gray-600 border-b">Joints</th>
+              <th className="px-3 py-2 text-right font-medium text-gray-600 border-b cursor-help" title="Total Rail Length (mm)">Total</th>
+              <th className="px-3 py-2 text-right font-medium text-gray-600 border-b cursor-help" title="Wastage (Total - Required)">Difference</th>
+              <th className="px-3 py-2 text-right font-medium text-gray-600 border-b cursor-help" title="Percentage Extra Material">% Extra</th>
+              <th className="px-3 py-2 text-center font-medium text-gray-600 border-b cursor-help" title="Number of Joints Required">Joints</th>
               <th className="px-2 py-2 border-b"></th>
             </tr>
           </thead>
