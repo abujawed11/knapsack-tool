@@ -84,19 +84,19 @@ export default function ResultCard({ row, settings }) {
 
   if (!row) {
     return (
-      <Card title="Result">
-        <p className="text-gray-500 text-sm">Select a row to view details</p>
-      </Card>
+      <div className="p-4">
+        <p className="text-gray-500 text-xs">Select a row to view details</p>
+      </div>
     );
   }
 
   if (!result || !result.ok) {
     return (
-      <Card title={`Result - ${row.modules} Modules`}>
-        <div className="text-red-600 text-sm">
+      <div className="p-4">
+        <div className="text-red-600 text-xs">
           {result?.reason || "No solution found. Try adjusting settings or selecting more lengths."}
         </div>
-      </Card>
+      </div>
     );
   }
 
@@ -113,130 +113,128 @@ export default function ResultCard({ row, settings }) {
   }
 
   return (
-    <Card title={`Result - ${row.modules} Modules`}>
-      <div className="space-y-4">
-        {/* Priority indicator */}
-        <div className="text-xs text-purple-600 font-medium">
-          Optimized for: {priorityText}
-        </div>
+    <div className="space-y-3">
+      {/* Priority indicator */}
+      <div className="text-xs text-purple-600 font-medium">
+        Optimized for: {priorityText}
+      </div>
 
-        {/* Extra cost summary (only if not cheapest) */}
-        {extraCost > 0 && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-            <div className="text-sm text-red-700 font-medium mb-1">
-              Extra Cost vs Cheapest Option: ₹{extraCost.toFixed(2)}
+      {/* Extra cost summary (only if not cheapest) */}
+      {extraCost > 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-2">
+          <div className="text-xs text-red-700 font-medium mb-1">
+            Extra Cost vs Cheapest: ₹{extraCost.toFixed(2)}
+          </div>
+          {priority === 'length' && (
+            <div className="text-xs text-red-600">
+              You pay ₹{extraCost.toFixed(2)} extra to reduce overshoot from {fmt(C.overshootMm)} mm to {fmt(result.overshootMm)} mm.
             </div>
-            {priority === 'length' && (
-              <div className="text-xs text-red-600">
-                You pay ₹{extraCost.toFixed(2)} extra to reduce overshoot from {fmt(C.overshootMm)} mm to {fmt(result.overshootMm)} mm.
-              </div>
-            )}
-            {priority === 'joints' && (
-              <div className="text-xs text-red-600">
-                You pay ₹{extraCost.toFixed(2)} extra to reduce joints from {C.joints} to {result.joints}.
-              </div>
-            )}
-          </div>
-        )}
-        {extraCost <= 0 && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-2">
-            <div className="text-sm text-green-700 font-medium">
-              This is the cheapest option.
-            </div>
-          </div>
-        )}
-
-        {/* Rail Summary */}
-        <div className="space-y-2">
-          <KV label="Required (mm)" value={fmt(required)} />
-          <KV label="Total Rail Length (mm)" value={fmt(result.totalRailLength)} />
-          <div className="flex justify-between text-sm">
-            <span className="text-red-600">Overshoot (mm)</span>
-            <span className="font-medium text-red-600">{fmt(result.overshootMm)}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-red-600">% Extra Length</span>
-            <span className="font-medium text-red-600">{extraPct.toFixed(2)}%</span>
-          </div>
-          <KV label="Pieces" value={result.pieces} />
-          <KV label="Joints" value={result.joints} />
-          {userMode === 'advanced' && (
-            <KV label="Small Pieces" value={result.smallCount} />
           )}
-        </div>
-
-        {/* Cost Breakdown */}
-        <div className="pt-3 mt-3 border-t">
-          <h4 className="text-sm font-semibold mb-2">Cost Breakdown</h4>
-          <div className="space-y-2">
-            <KV label="Rail Material Cost" value={`₹${result.materialCost.toFixed(2)}`} />
-            {result.joints > 0 && (
-              <KV label="Joint Cost" value={`₹${result.jointSetCost.toFixed(2)}`} />
-            )}
-            <div className="flex justify-between text-sm font-semibold pt-1 border-t">
-              <span className="text-gray-800">Total Cost</span>
-              <span className="text-green-600">₹{result.totalActualCost.toFixed(2)}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Cheapest option mini summary */}
-        {C && (
-          <div className="pt-3 mt-3 border-t bg-gray-50 rounded-lg p-3">
-            <h4 className="text-xs font-semibold text-gray-600 mb-2">Cheapest Option Summary</h4>
-            <div className="text-xs space-y-1 text-gray-700">
-              <div className="flex justify-between">
-                <span>Cost:</span>
-                <span className="font-medium">₹{C.totalActualCost.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Overshoot:</span>
-                <span className="font-medium">{fmt(C.overshootMm)} mm</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Joints:</span>
-                <span className="font-medium">{C.joints}</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Chosen Pieces */}
-        <div className="pt-2">
-          <h4 className="text-sm font-semibold mb-2">Chosen Pieces</h4>
-          {result.plan.length === 0 ? (
-            <div className="text-gray-500">—</div>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {result.plan.map((p, i) => (
-                <span
-                  key={i}
-                  className="inline-flex items-center rounded-full border px-2 py-1 text-sm bg-white"
-                >
-                  {p} mm
-                </span>
-              ))}
+          {priority === 'joints' && (
+            <div className="text-xs text-red-600">
+              You pay ₹{extraCost.toFixed(2)} extra to reduce joints from {C.joints} to {result.joints}.
             </div>
           )}
         </div>
+      )}
+      {extraCost <= 0 && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-2">
+          <div className="text-xs text-green-700 font-medium">
+            This is the cheapest option.
+          </div>
+        </div>
+      )}
 
-        {/* Counts by Length */}
-        <div>
-          <h4 className="text-sm font-semibold mb-2">Counts by Length</h4>
-          <table className="w-full text-sm">
-            <tbody>
-              {Object.entries(result.countsByLength)
-                .sort((a, b) => Number(a[0]) - Number(b[0]))
-                .map(([len, ct]) => (
-                  <tr key={len} className="border-t">
-                    <td className="py-1 text-gray-600">{len} mm</td>
-                    <td className="py-1 text-right font-medium">{ct}</td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
+      {/* Rail Summary */}
+      <div className="space-y-1.5">
+        <KV label="Required (mm)" value={fmt(required)} />
+        <KV label="Total Rail Length (mm)" value={fmt(result.totalRailLength)} />
+        <div className="flex justify-between text-xs">
+          <span className="text-red-600">Overshoot (mm)</span>
+          <span className="font-medium text-red-600">{fmt(result.overshootMm)}</span>
+        </div>
+        <div className="flex justify-between text-xs">
+          <span className="text-red-600">% Extra Length</span>
+          <span className="font-medium text-red-600">{extraPct.toFixed(2)}%</span>
+        </div>
+        <KV label="Pieces" value={result.pieces} />
+        <KV label="Joints" value={result.joints} />
+        {userMode === 'advanced' && (
+          <KV label="Small Pieces" value={result.smallCount} />
+        )}
+      </div>
+
+      {/* Cost Breakdown */}
+      <div className="pt-2 mt-2 border-t">
+        <h4 className="text-xs font-semibold mb-1.5">Cost Breakdown</h4>
+        <div className="space-y-1.5">
+          <KV label="Rail Material Cost" value={`₹${result.materialCost.toFixed(2)}`} />
+          {result.joints > 0 && (
+            <KV label="Joint Cost" value={`₹${result.jointSetCost.toFixed(2)}`} />
+          )}
+          <div className="flex justify-between text-xs font-semibold pt-1 border-t">
+            <span className="text-gray-800">Total Cost</span>
+            <span className="text-green-600">₹{result.totalActualCost.toFixed(2)}</span>
+          </div>
         </div>
       </div>
-    </Card>
+
+      {/* Cheapest option mini summary */}
+      {C && (
+        <div className="pt-2 mt-2 border-t bg-gray-50 rounded-lg p-2">
+          <h4 className="text-xs font-semibold text-gray-600 mb-1">Cheapest Option</h4>
+          <div className="text-xs space-y-0.5 text-gray-700">
+            <div className="flex justify-between">
+              <span>Cost:</span>
+              <span className="font-medium">₹{C.totalActualCost.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Overshoot:</span>
+              <span className="font-medium">{fmt(C.overshootMm)} mm</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Joints:</span>
+              <span className="font-medium">{C.joints}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Chosen Pieces */}
+      <div className="pt-2">
+        <h4 className="text-xs font-semibold mb-1.5">Chosen Pieces</h4>
+        {result.plan.length === 0 ? (
+          <div className="text-gray-500 text-xs">—</div>
+        ) : (
+          <div className="flex flex-wrap gap-1.5">
+            {result.plan.map((p, i) => (
+              <span
+                key={i}
+                className="inline-flex items-center rounded-full border px-2 py-0.5 text-xs bg-white"
+              >
+                {p} mm
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Counts by Length */}
+      <div>
+        <h4 className="text-xs font-semibold mb-1.5">Counts by Length</h4>
+        <table className="w-full text-xs">
+          <tbody>
+            {Object.entries(result.countsByLength)
+              .sort((a, b) => Number(a[0]) - Number(b[0]))
+              .map(([len, ct]) => (
+                <tr key={len} className="border-t">
+                  <td className="py-0.5 text-gray-600">{len} mm</td>
+                  <td className="py-0.5 text-right font-medium">{ct}</td>
+                </tr>
+              ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }

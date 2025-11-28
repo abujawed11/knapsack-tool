@@ -49,7 +49,7 @@ export function ReadOnlyField({ label, value }) {
 
 export function KV({ label, value }) {
   return (
-    <div className="flex justify-between text-sm">
+    <div className="flex justify-between text-xs">
       <span className="text-gray-600">{label}</span>
       <span className="font-medium text-gray-800">{value}</span>
     </div>

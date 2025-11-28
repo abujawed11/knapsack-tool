@@ -538,14 +538,14 @@ export default function RailTable({
 
       {/* Result Popover */}
       {showModal && selectedRow && (
-        <div className="fixed top-20 right-8 z-50 w-96 animate-fadeIn">
+        <div className="fixed top-40 right-8 z-50 w-80 animate-fadeIn">
           <div className="bg-white rounded-xl shadow-2xl border border-gray-200">
             {/* Popover Header */}
-            <div className="bg-gradient-to-r from-purple-600 to-purple-700 px-4 py-3 flex justify-between items-center rounded-t-xl">
-              <h3 className="font-semibold text-white text-sm">Row Details - {selectedRow.modules} Modules</h3>
+            <div className="bg-gradient-to-r from-purple-600 to-purple-700 px-3 py-2 flex justify-between items-center rounded-t-xl">
+              <h3 className="font-semibold text-white text-xs">Row Details - {selectedRow.modules} Modules</h3>
               <button
                 onClick={() => setShowModal(false)}
-                className="text-white hover:text-gray-200 text-2xl leading-none font-light transition-colors"
+                className="text-white hover:text-gray-200 text-xl leading-none font-light transition-colors"
                 title="Close"
               >
                 ×
@@ -553,7 +553,7 @@ export default function RailTable({
             </div>
 
             {/* Popover Content */}
-            <div className="max-h-[calc(100vh-120px)] overflow-y-auto">
+            <div className="max-h-[calc(100vh-200px)] overflow-y-auto p-4">
               <ResultCard row={selectedRow} settings={settings} />
             </div>
           </div>
