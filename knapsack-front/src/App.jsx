@@ -3,7 +3,6 @@ import { useState, useEffect, useMemo } from 'react';
 import Header from './components/Header';
 import GlobalInputs from './components/GlobalInputs';
 import RailTable from './components/RailTable';
-import ResultCard from './components/ResultCard';
 import { loadSettings, saveSettings } from './lib/storage';
 
 export default function App() {
@@ -71,25 +70,18 @@ export default function App() {
           <GlobalInputs settings={settings} setSettings={setSettings} />
         </div>
 
-        {/* Main Content: 2-column layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Left: Rail Table */}
-          <section className="lg:col-span-9">
-            <RailTable
-              rows={rows}
-              setRows={setRows}
-              selectedRowId={selectedRowId}
-              setSelectedRowId={setSelectedRowId}
-              settings={settings}
-              setSettings={setSettings}
-            />
-          </section>
-
-          {/* Right: Result Card */}
-          <aside className="lg:col-span-3">
-            <ResultCard row={selectedRow} settings={settings} />
-          </aside>
-        </div>
+        {/* Main Content */}
+        <section>
+          <RailTable
+            rows={rows}
+            setRows={setRows}
+            selectedRowId={selectedRowId}
+            setSelectedRowId={setSelectedRowId}
+            settings={settings}
+            setSettings={setSettings}
+            selectedRow={selectedRow}
+          />
+        </section>
       </main>
 
       <footer className="py-8 text-center text-xs text-gray-500">

@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { optimizeCuts, requiredRailLength, generateScenarios } from '../lib/optimizer';
 import { parseNumList, fmt } from '../lib/storage';
 import { TextField, NumberField } from './ui';
+import ResultCard from './ResultCard';
 
 export default function RailTable({
   rows,
@@ -10,10 +11,12 @@ export default function RailTable({
   selectedRowId,
   setSelectedRowId,
   settings,
-  setSettings
+  setSettings,
+  selectedRow
 }) {
   const [showSettings, setShowSettings] = useState(false);
   const [enableSB2, setEnableSB2] = useState(false);
+  const [showModal, setShowModal] = useState(false);
 
   const {
     userMode,
@@ -354,7 +357,10 @@ export default function RailTable({
                 return (
                   <tr
                     key={row.id}
-                    onClick={() => setSelectedRowId(row.id)}
+                    onClick={() => {
+                      setSelectedRowId(row.id);
+                      setShowModal(true);
+                    }}
                     className={`cursor-pointer transition-colors ${
                       isSelected
                         ? 'bg-purple-50 border-l-4 border-l-purple-500'
@@ -525,6 +531,30 @@ export default function RailTable({
             <div className="text-right">
               <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Overall Cost</span>
               <p className="text-2xl font-bold text-green-600">₹{totals.cost.toFixed(2)}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Result Popover */}
+      {showModal && selectedRow && (
+        <div className="fixed top-20 right-8 z-50 w-96 animate-fadeIn">
+          <div className="bg-white rounded-xl shadow-2xl border border-gray-200">
+            {/* Popover Header */}
+            <div className="bg-gradient-to-r from-purple-600 to-purple-700 px-4 py-3 flex justify-between items-center rounded-t-xl">
+              <h3 className="font-semibold text-white text-sm">Row Details - {selectedRow.modules} Modules</h3>
+              <button
+                onClick={() => setShowModal(false)}
+                className="text-white hover:text-gray-200 text-2xl leading-none font-light transition-colors"
+                title="Close"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Popover Content */}
+            <div className="max-h-[calc(100vh-120px)] overflow-y-auto">
+              <ResultCard row={selectedRow} settings={settings} />
             </div>
           </div>
         </div>
