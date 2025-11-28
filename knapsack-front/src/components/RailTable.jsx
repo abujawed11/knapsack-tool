@@ -294,16 +294,16 @@ export default function RailTable({
                 </th>
               ))}
               <th className="px-3 py-2 text-right font-medium text-gray-600 border-b">Total</th>
+              <th className="px-3 py-2 text-right font-medium text-gray-600 border-b">Difference</th>
               <th className="px-3 py-2 text-right font-medium text-gray-600 border-b">% Extra</th>
               <th className="px-3 py-2 text-center font-medium text-gray-600 border-b">Joints</th>
-              <th className="px-3 py-2 text-center font-medium text-gray-600 border-b">Cost</th>
               <th className="px-2 py-2 border-b"></th>
             </tr>
           </thead>
           <tbody>
             {rowResults.length === 0 ? (
               <tr>
-                <td colSpan={allLengths.length + 7} className="px-4 py-8 text-center text-gray-500">
+                <td colSpan={allLengths.length + 6} className="px-4 py-8 text-center text-gray-500">
                   No rows yet. Click "Add Row" to get started.
                 </td>
               </tr>
@@ -353,13 +353,15 @@ export default function RailTable({
                     <td className={`px-3 py-2 text-right border-b ${
                       result?.ok && result.overshootMm > 0 ? 'text-red-600' : ''
                     }`}>
+                      {result?.ok ? fmt(result.overshootMm) : '-'}
+                    </td>
+                    <td className={`px-3 py-2 text-right border-b ${
+                      result?.ok && result.overshootMm > 0 ? 'text-red-600' : ''
+                    }`}>
                       {result?.ok ? `${extraPct}%` : '-'}
                     </td>
                     <td className="px-3 py-2 text-center border-b">
                       {result?.ok ? result.joints : '-'}
-                    </td>
-                    <td className="px-3 py-2 text-right border-b font-medium text-green-600">
-                      {result?.ok ? result.totalActualCost.toFixed(2) : '-'}
                     </td>
                     <td className="px-2 py-2 border-b">
                       <button
@@ -396,14 +398,14 @@ export default function RailTable({
                 <td className="px-3 py-2 text-right border-b text-purple-700">
                   {fmt(totals.total)}
                 </td>
+                <td className="px-3 py-2 text-right border-b text-red-600">
+                  {fmt(totals.wastage)}
+                </td>
                 <td className="px-3 py-2 text-right border-b text-purple-700">
                   {totals.wastagePct}%
                 </td>
                 <td className="px-3 py-2 text-center border-b text-purple-700">
                   {totals.joints}
-                </td>
-                <td className="px-3 py-2 text-right border-b text-green-600">
-                  {totals.cost.toFixed(2)}
                 </td>
                 <td className="px-2 py-2 border-b"></td>
               </tr>
