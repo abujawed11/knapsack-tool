@@ -8,6 +8,7 @@ export default function GlobalInputs({ settings, setSettings }) {
     midClamp,
     endClampWidth,
     buffer,
+    purlinDistance,
     lengthsInput,
     enabledLengths,
     userMode,
@@ -49,7 +50,7 @@ export default function GlobalInputs({ settings, setSettings }) {
       <h2 className="text-lg font-semibold mb-4">Global Parameters</h2>
 
       {/* Primary Inputs */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
         <div>
           <label className="block text-sm text-gray-600 mb-1">Module Width (mm)</label>
           <input
@@ -83,6 +84,15 @@ export default function GlobalInputs({ settings, setSettings }) {
             type="number"
             value={buffer}
             onChange={e => updateSetting('buffer', e.target.value)}
+            className="w-full rounded-lg border px-3 py-2 text-center font-medium"
+          />
+        </div>
+        <div>
+          <label className="block text-sm text-gray-600 mb-1">Purlin to Purlin (mm)</label>
+          <input
+            type="number"
+            value={purlinDistance}
+            onChange={e => updateSetting('purlinDistance', e.target.value)}
             className="w-full rounded-lg border px-3 py-2 text-center font-medium"
           />
         </div>

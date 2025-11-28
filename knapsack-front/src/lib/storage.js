@@ -9,6 +9,7 @@ export const DEFAULT_SETTINGS = {
   midClamp: 20,
   endClampWidth: 40,
   buffer: 15,
+  purlinDistance: 1700,
   lengthsInput: DEFAULT_LENGTHS.join(', '),
   enabledLengths: DEFAULT_LENGTHS.reduce((acc, len) => ({ ...acc, [len]: true }), {}),
   maxPieces: 3,
