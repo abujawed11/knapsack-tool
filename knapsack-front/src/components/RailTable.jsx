@@ -282,6 +282,8 @@ export default function RailTable({
           <thead className="bg-gray-50">
             <tr>
               <th className="px-3 py-2 text-left font-medium text-gray-600 border-b">Modules</th>
+              <th className="px-3 py-2 text-center font-medium text-gray-600 border-b">EC</th>
+              <th className="px-3 py-2 text-center font-medium text-gray-600 border-b">MC</th>
               <th className="px-3 py-2 text-right font-medium text-gray-600 border-b">Required</th>
               {allLengths.map(len => (
                 <th
@@ -303,7 +305,7 @@ export default function RailTable({
           <tbody>
             {rowResults.length === 0 ? (
               <tr>
-                <td colSpan={allLengths.length + 6} className="px-4 py-8 text-center text-gray-500">
+                <td colSpan={allLengths.length + 8} className="px-4 py-8 text-center text-gray-500">
                   No rows yet. Click "Add Row" to get started.
                 </td>
               </tr>
@@ -333,6 +335,12 @@ export default function RailTable({
                         className="w-16 px-2 py-1 border rounded text-center"
                         min="1"
                       />
+                    </td>
+                    <td className="px-3 py-2 text-center border-b">
+                      2
+                    </td>
+                    <td className="px-3 py-2 text-center border-b">
+                      {row.modules > 0 ? row.modules - 1 : 0}
                     </td>
                     <td className="px-3 py-2 text-right border-b font-medium">
                       {fmt(required)}
@@ -382,6 +390,8 @@ export default function RailTable({
             {rowResults.length > 0 && (
               <tr className="bg-purple-50 font-semibold border-t-2 border-purple-200">
                 <td className="px-3 py-2 border-b text-purple-700">Total</td>
+                <td className="px-3 py-2 text-center border-b text-purple-700">-</td>
+                <td className="px-3 py-2 text-center border-b text-purple-700">-</td>
                 <td className="px-3 py-2 text-right border-b text-purple-700">
                   {fmt(totals.required)}
                 </td>
