@@ -13,6 +13,7 @@ export default function RailTable({
   setSettings
 }) {
   const [showSettings, setShowSettings] = useState(false);
+  const [enableSB2, setEnableSB2] = useState(false);
 
   const {
     userMode,
@@ -20,6 +21,7 @@ export default function RailTable({
     midClamp,
     endClampWidth,
     buffer,
+    purlinDistance,
     lengthsInput,
     enabledLengths,
     maxPieces,
@@ -154,6 +156,16 @@ export default function RailTable({
     if (selectedRowId === id) {
       setSelectedRowId(newRows.length > 0 ? newRows[0].id : null);
     }
+  };
+
+  const updateRowSupportBase = (id, field, value) => {
+    setRows(rows.map(r => r.id === id ? { ...r, [field]: Number(value) || 0 } : r));
+  };
+
+  // Calculate default SB1 value for a row
+  const calculateSB1 = (required) => {
+    const purlin = Number(purlinDistance) || 1;
+    return Math.ceil(required / purlin) + 1;
   };
 
   return (
@@ -299,13 +311,26 @@ export default function RailTable({
               <th className="px-3 py-2 text-right font-medium text-gray-600 border-b cursor-help" title="Wastage (Total - Required)">Difference</th>
               <th className="px-3 py-2 text-right font-medium text-gray-600 border-b cursor-help" title="Percentage Extra Material">% Extra</th>
               <th className="px-3 py-2 text-center font-medium text-gray-600 border-b cursor-help" title="Number of Joints Required">Joints</th>
+              <th className="px-3 py-2 text-center font-medium text-gray-600 border-b cursor-help" title="Support Base 1">SB1</th>
+              <th className="px-3 py-2 text-center font-medium text-gray-600 border-b">
+                <div className="flex items-center justify-center gap-1">
+                  <input
+                    type="checkbox"
+                    checked={enableSB2}
+                    onChange={(e) => setEnableSB2(e.target.checked)}
+                    className="w-3.5 h-3.5 text-purple-600 rounded cursor-pointer"
+                    title="Enable Support Base 2 column"
+                  />
+                  <span className="cursor-help" title="Support Base 2">SB2</span>
+                </div>
+              </th>
               <th className="px-2 py-2 border-b"></th>
             </tr>
           </thead>
           <tbody>
             {rowResults.length === 0 ? (
               <tr>
-                <td colSpan={allLengths.length + 8} className="px-4 py-8 text-center text-gray-500">
+                <td colSpan={allLengths.length + 10} className="px-4 py-8 text-center text-gray-500">
                   No rows yet. Click "Add Row" to get started.
                 </td>
               </tr>
@@ -315,6 +340,11 @@ export default function RailTable({
                 const extraPct = result?.ok && required > 0
                   ? ((result.overshootMm / required) * 100).toFixed(2)
                   : '-';
+
+                // Calculate default SB1
+                const defaultSB1 = calculateSB1(required);
+                const sb1Value = enableSB2 ? (row.supportBase1 ?? defaultSB1) : defaultSB1;
+                const sb2Value = row.supportBase2 ?? 0;
 
                 return (
                   <tr
@@ -371,6 +401,34 @@ export default function RailTable({
                     <td className="px-3 py-2 text-center border-b">
                       {result?.ok ? result.joints : '-'}
                     </td>
+                    <td className="px-3 py-2 text-center border-b">
+                      {enableSB2 ? (
+                        <input
+                          type="number"
+                          value={sb1Value}
+                          onChange={(e) => updateRowSupportBase(row.id, 'supportBase1', e.target.value)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-16 px-2 py-1 border rounded text-center"
+                          min="0"
+                        />
+                      ) : (
+                        defaultSB1
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-center border-b">
+                      {enableSB2 ? (
+                        <input
+                          type="number"
+                          value={sb2Value}
+                          onChange={(e) => updateRowSupportBase(row.id, 'supportBase2', e.target.value)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-16 px-2 py-1 border rounded text-center"
+                          min="0"
+                        />
+                      ) : (
+                        '-'
+                      )}
+                    </td>
                     <td className="px-2 py-2 border-b">
                       <button
                         onClick={(e) => {
@@ -417,6 +475,8 @@ export default function RailTable({
                 <td className="px-3 py-2 text-center border-b text-purple-700">
                   {totals.joints}
                 </td>
+                <td className="px-3 py-2 text-center border-b text-purple-700">-</td>
+                <td className="px-3 py-2 text-center border-b text-purple-700">-</td>
                 <td className="px-2 py-2 border-b"></td>
               </tr>
             )}
