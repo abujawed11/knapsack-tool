@@ -141,13 +141,17 @@ export default function RailTable({
   const addRow = () => {
     const newId = rows.length > 0 ? Math.max(...rows.map(r => r.id)) + 1 : 1;
     const lastModules = rows.length > 0 ? rows[rows.length - 1].modules : 0;
-    setRows([...rows, { id: newId, modules: lastModules + 1 }]);
+    setRows([...rows, { id: newId, modules: lastModules + 1, quantity: 1 }]);
     // Auto-select the new row
     setSelectedRowId(newId);
   };
 
   const updateRowModules = (id, modules) => {
     setRows(rows.map(r => r.id === id ? { ...r, modules: Number(modules) || 0 } : r));
+  };
+
+  const updateRowQuantity = (id, quantity) => {
+    setRows(rows.map(r => r.id === id ? { ...r, quantity: Math.max(1, Number(quantity) || 1) } : r));
   };
 
   const deleteRow = (id) => {
@@ -294,6 +298,7 @@ export default function RailTable({
           <thead className="bg-gray-50">
             <tr>
               <th className="px-3 py-2 text-left font-medium text-gray-600 border-b">Modules</th>
+              <th className="px-3 py-2 text-center font-medium text-gray-600 border-b">Quantity</th>
               <th className="px-3 py-2 text-center font-medium text-gray-600 border-b cursor-help" title="End Clamp">EC</th>
               <th className="px-3 py-2 text-center font-medium text-gray-600 border-b cursor-help" title="Mid Clamp">MC</th>
               <th className="px-3 py-2 text-right font-medium text-gray-600 border-b cursor-help" title="Required Rail Length (mm)">Required</th>
@@ -330,7 +335,7 @@ export default function RailTable({
           <tbody>
             {rowResults.length === 0 ? (
               <tr>
-                <td colSpan={allLengths.length + 10} className="px-4 py-8 text-center text-gray-500">
+                <td colSpan={allLengths.length + 11} className="px-4 py-8 text-center text-gray-500">
                   No rows yet. Click "Add Row" to get started.
                 </td>
               </tr>
@@ -361,6 +366,16 @@ export default function RailTable({
                         type="number"
                         value={row.modules}
                         onChange={(e) => updateRowModules(row.id, e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-16 px-2 py-1 border rounded text-center"
+                        min="1"
+                      />
+                    </td>
+                    <td className="px-3 py-2 border-b">
+                      <input
+                        type="number"
+                        value={row.quantity ?? 1}
+                        onChange={(e) => updateRowQuantity(row.id, e.target.value)}
                         onClick={(e) => e.stopPropagation()}
                         className="w-16 px-2 py-1 border rounded text-center"
                         min="1"
@@ -448,6 +463,7 @@ export default function RailTable({
             {rowResults.length > 0 && (
               <tr className="bg-purple-50 font-semibold border-t-2 border-purple-200">
                 <td className="px-3 py-2 border-b text-purple-700">Total</td>
+                <td className="px-3 py-2 text-center border-b text-purple-700">-</td>
                 <td className="px-3 py-2 text-center border-b text-purple-700">-</td>
                 <td className="px-3 py-2 text-center border-b text-purple-700">-</td>
                 <td className="px-3 py-2 text-right border-b text-purple-700">
