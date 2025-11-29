@@ -135,15 +135,26 @@ export default function RailTable({
       maxWastePct, allowUndershootPct, alphaJoint, betaSmall,
       gammaShort, costPerMm, costPerJointSet, joinerLength, priority]);
 
+  // Calculate default SB1 value for a row
+  const calculateSB1 = (required) => {
+    const purlin = Number(purlinDistance) || 1;
+    return Math.ceil(required / purlin) + 1;
+  };
+
   // Calculate totals for all columns
   const totals = useMemo(() => {
     const result = {
+      modules: 0,
+      endClamp: 0,
+      midClamp: 0,
       required: 0,
       total: 0,
       joints: 0,
       cost: 0,
       countsByLength: {},
-      wastage: 0
+      wastage: 0,
+      sb1: 0,
+      sb2: 0
     };
 
     // Initialize counts for all lengths
@@ -151,20 +162,51 @@ export default function RailTable({
       result.countsByLength[len] = 0;
     });
 
-    rowResults.forEach(({ required, result: rowResult }) => {
-      result.required += required;
+    // Sum with quantity multiplication: Σ(Qi × ValueI)
+    rowResults.forEach(({ row, required, result: rowResult }) => {
+      const qty = row.quantity || 1;
+
+      result.modules += row.modules * qty;
+      result.endClamp += 2 * qty;  // EC is always 2
+      result.midClamp += (row.modules > 0 ? row.modules - 1 : 0) * qty;  // MC = modules - 1
+      result.required += required * qty;
 
       if (rowResult?.ok) {
-        result.total += rowResult.totalRailLength;  // Sum of rail pieces only
-        result.joints += rowResult.joints;
-        result.cost += rowResult.totalActualCost;
-        result.wastage += rowResult.overshootMm;  // Overshoot without joiners
+        result.total += rowResult.totalRailLength * qty;
+        result.joints += rowResult.joints * qty;
+        result.cost += rowResult.totalActualCost * qty;
+        result.wastage += rowResult.overshootMm * qty;
 
         // Sum up piece counts for each length
         allLengths.forEach(len => {
-          result.countsByLength[len] += (rowResult.countsByLength[len] || 0);
+          result.countsByLength[len] += (rowResult.countsByLength[len] || 0) * qty;
         });
       }
+
+      // SB1 and SB2 calculations
+      const defaultSB1 = calculateSB1(required);
+      const sb1Value = enableSB2 ? (row.supportBase1 ?? defaultSB1) : defaultSB1;
+      const sb2Value = row.supportBase2 ?? 0;
+
+      result.sb1 += sb1Value * qty;
+      result.sb2 += sb2Value * qty;
+    });
+
+    // Multiply all totals by railsPerSide
+    const rps = Number(railsPerSide) || 1;
+    result.modules *= rps;
+    result.endClamp *= rps;
+    result.midClamp *= rps;
+    result.required *= rps;
+    result.total *= rps;
+    result.joints *= rps;
+    result.cost *= rps;
+    result.wastage *= rps;
+    result.sb1 *= rps;
+    result.sb2 *= rps;
+
+    allLengths.forEach(len => {
+      result.countsByLength[len] *= rps;
     });
 
     // Calculate overall wastage percentage
@@ -173,7 +215,7 @@ export default function RailTable({
       : 0;
 
     return result;
-  }, [rowResults, allLengths]);
+  }, [rowResults, allLengths, railsPerSide, enableSB2]);
 
   const addRow = () => {
     const newId = rows.length > 0 ? Math.max(...rows.map(r => r.id)) + 1 : 1;
@@ -201,12 +243,6 @@ export default function RailTable({
 
   const updateRowSupportBase = (id, field, value) => {
     setRows(rows.map(r => r.id === id ? { ...r, [field]: Number(value) || 0 } : r));
-  };
-
-  // Calculate default SB1 value for a row
-  const calculateSB1 = (required) => {
-    const purlin = Number(purlinDistance) || 1;
-    return Math.ceil(required / purlin) + 1;
   };
 
   return (
@@ -502,10 +538,10 @@ export default function RailTable({
             {/* Totals Row */}
             {rowResults.length > 0 && (
               <tr className="bg-purple-50 font-semibold border-t-2 border-purple-200">
-                <td className="px-3 py-2 border-b text-purple-700">Total</td>
+                <td className="px-3 py-2 border-b text-purple-700">{totals.modules}</td>
                 <td className="px-3 py-2 text-center border-b text-purple-700">-</td>
-                <td className="px-3 py-2 text-center border-b text-purple-700">-</td>
-                <td className="px-3 py-2 text-center border-b text-purple-700">-</td>
+                <td className="px-3 py-2 text-center border-b text-purple-700">{totals.endClamp}</td>
+                <td className="px-3 py-2 text-center border-b text-purple-700">{totals.midClamp}</td>
                 <td className="px-3 py-2 text-right border-b text-purple-700">
                   {fmt(totals.required)}
                 </td>
@@ -531,8 +567,10 @@ export default function RailTable({
                 <td className="px-3 py-2 text-center border-b text-purple-700">
                   {totals.joints}
                 </td>
-                <td className="px-3 py-2 text-center border-b text-purple-700">-</td>
-                <td className="px-3 py-2 text-center border-b text-purple-700">-</td>
+                <td className="px-3 py-2 text-center border-b text-purple-700">{totals.sb1}</td>
+                <td className="px-3 py-2 text-center border-b text-purple-700">
+                  {enableSB2 ? totals.sb2 : '-'}
+                </td>
                 <td className="px-2 py-2 border-b"></td>
               </tr>
             )}
