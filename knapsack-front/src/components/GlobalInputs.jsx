@@ -89,7 +89,7 @@ export default function GlobalInputs({ settings, setSettings }) {
           />
         </div>
         <div>
-          <label className="block text-sm text-gray-600 mb-1">Purlin to Purlin (mm)</label>
+          <label className="block text-sm text-gray-600 mb-1">Purlin to Purlin Distance (mm)</label>
           <input
             type="number"
             value={purlinDistance}
