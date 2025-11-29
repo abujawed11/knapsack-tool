@@ -1,5 +1,5 @@
 // src/components/RailTable.jsx
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef } from 'react';
 import { optimizeCuts, requiredRailLength, generateScenarios } from '../lib/optimizer';
 import { parseNumList, fmt } from '../lib/storage';
 import { TextField, NumberField } from './ui';
@@ -17,6 +17,39 @@ export default function RailTable({
   const [showSettings, setShowSettings] = useState(false);
   const [enableSB2, setEnableSB2] = useState(false);
   const [showModal, setShowModal] = useState(false);
+
+  // Draggable state
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragRef = useRef({ startX: 0, startY: 0 });
+
+  // Drag handlers
+  const handleMouseDown = (e) => {
+    setIsDragging(true);
+    dragRef.current = {
+      startX: e.clientX - position.x,
+      startY: e.clientY - position.y
+    };
+  };
+
+  const handleMouseMove = (e) => {
+    if (isDragging) {
+      setPosition({
+        x: e.clientX - dragRef.current.startX,
+        y: e.clientY - dragRef.current.startY
+      });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  // Reset position when modal closes
+  const closeModal = () => {
+    setShowModal(false);
+    setPosition({ x: 0, y: 0 });
+  };
 
   const {
     userMode,
@@ -538,14 +571,27 @@ export default function RailTable({
 
       {/* Result Popover */}
       {showModal && selectedRow && (
-        <div className="fixed top-40 right-8 z-50 w-80 animate-fadeIn">
+        <div
+          className="fixed top-40 right-8 z-50 w-80 animate-fadeIn"
+          style={{
+            transform: `translate(${position.x}px, ${position.y}px)`,
+            cursor: isDragging ? 'grabbing' : 'default'
+          }}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+        >
           <div className="bg-white rounded-xl shadow-2xl border border-gray-200">
             {/* Popover Header */}
-            <div className="bg-gradient-to-r from-purple-600 to-purple-700 px-3 py-2 flex justify-between items-center rounded-t-xl">
+            <div
+              className="bg-linear-to-r from-purple-600 to-purple-700 px-3 py-2 flex justify-between items-center rounded-t-xl cursor-grab active:cursor-grabbing select-none"
+              onMouseDown={handleMouseDown}
+            >
               <h3 className="font-semibold text-white text-xs">Row Details - {selectedRow.modules} Modules</h3>
               <button
-                onClick={() => setShowModal(false)}
-                className="text-white hover:text-gray-200 text-xl leading-none font-light transition-colors"
+                onClick={closeModal}
+                onMouseDown={(e) => e.stopPropagation()}
+                className="text-white hover:text-gray-200 text-xl leading-none font-light transition-colors cursor-pointer"
                 title="Close"
               >
                 ×
