@@ -370,8 +370,8 @@ export default function RailTable({
         <table className="w-full text-sm">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-3 py-2 text-left font-medium text-gray-600 border-b">Modules</th>
               <th className="px-3 py-2 text-center font-medium text-gray-600 border-b">Quantity</th>
+              <th className="px-3 py-2 text-left font-medium text-gray-600 border-b">Modules</th>
               <th className="px-3 py-2 text-center font-medium text-gray-600 border-b cursor-help" title="End Clamp">EC</th>
               <th className="px-3 py-2 text-center font-medium text-gray-600 border-b cursor-help" title="Mid Clamp">MC</th>
               <th className="px-3 py-2 text-right font-medium text-gray-600 border-b cursor-help" title="Required Rail Length (mm)">Required</th>
@@ -440,8 +440,8 @@ export default function RailTable({
                     <td className="px-3 py-2 border-b">
                       <input
                         type="number"
-                        value={row.modules}
-                        onChange={(e) => updateRowModules(row.id, e.target.value)}
+                        value={row.quantity ?? 1}
+                        onChange={(e) => updateRowQuantity(row.id, e.target.value)}
                         onClick={(e) => e.stopPropagation()}
                         className="w-16 px-2 py-1 border rounded text-center"
                         min="1"
@@ -450,8 +450,8 @@ export default function RailTable({
                     <td className="px-3 py-2 border-b">
                       <input
                         type="number"
-                        value={row.quantity ?? 1}
-                        onChange={(e) => updateRowQuantity(row.id, e.target.value)}
+                        value={row.modules}
+                        onChange={(e) => updateRowModules(row.id, e.target.value)}
                         onClick={(e) => e.stopPropagation()}
                         className="w-16 px-2 py-1 border rounded text-center"
                         min="1"
@@ -537,41 +537,41 @@ export default function RailTable({
             )}
             {/* Totals Row */}
             {rowResults.length > 0 && (
-              <tr className="bg-purple-50 font-semibold border-t-2 border-purple-200">
-                <td className="px-3 py-2 border-b text-purple-700">{totals.modules}</td>
-                <td className="px-3 py-2 text-center border-b text-purple-700">-</td>
-                <td className="px-3 py-2 text-center border-b text-purple-700">{totals.endClamp}</td>
-                <td className="px-3 py-2 text-center border-b text-purple-700">{totals.midClamp}</td>
-                <td className="px-3 py-2 text-right border-b text-purple-700">
+              <tr className="bg-gradient-to-r from-purple-100 to-purple-50 font-bold border-t-4 border-purple-400 shadow-sm">
+                <td className="px-3 py-3 border-b-2 border-purple-300 text-center text-purple-700">-</td>
+                <td className="px-3 py-3 border-b-2 border-purple-300 text-purple-800">{totals.modules}</td>
+                <td className="px-3 py-3 border-b-2 border-purple-300 text-center text-purple-800">{totals.endClamp}</td>
+                <td className="px-3 py-3 border-b-2 border-purple-300 text-center text-purple-800">{totals.midClamp}</td>
+                <td className="px-3 py-3 border-b-2 border-purple-300 text-right text-purple-800">
                   {fmt(totals.required)}
                 </td>
                 {allLengths.map(len => (
                   <td
                     key={len}
-                    className={`px-2 py-2 text-center border-b ${
-                      enabledLengths[len] !== false ? 'text-purple-700' : 'text-gray-300'
+                    className={`px-2 py-3 text-center border-b-2 border-purple-300 ${
+                      enabledLengths[len] !== false ? 'text-purple-800 font-bold' : 'text-gray-400'
                     }`}
                   >
                     {totals.countsByLength[len] || 0}
                   </td>
                 ))}
-                <td className="px-3 py-2 text-right border-b text-purple-700">
+                <td className="px-3 py-3 border-b-2 border-purple-300 text-right text-purple-800">
                   {fmt(totals.total)}
                 </td>
-                <td className="px-3 py-2 text-right border-b text-red-600">
+                <td className="px-3 py-3 border-b-2 border-purple-300 text-right text-red-700 font-bold">
                   {fmt(totals.wastage)}
                 </td>
-                <td className="px-3 py-2 text-right border-b text-purple-700">
+                <td className="px-3 py-3 border-b-2 border-purple-300 text-right text-purple-800">
                   {totals.wastagePct}%
                 </td>
-                <td className="px-3 py-2 text-center border-b text-purple-700">
+                <td className="px-3 py-3 border-b-2 border-purple-300 text-center text-purple-800">
                   {totals.joints}
                 </td>
-                <td className="px-3 py-2 text-center border-b text-purple-700">{totals.sb1}</td>
-                <td className="px-3 py-2 text-center border-b text-purple-700">
+                <td className="px-3 py-3 border-b-2 border-purple-300 text-center text-purple-800">{totals.sb1}</td>
+                <td className="px-3 py-3 border-b-2 border-purple-300 text-center text-purple-800">
                   {enableSB2 ? totals.sb2 : '-'}
                 </td>
-                <td className="px-2 py-2 border-b"></td>
+                <td className="px-2 py-3 border-b-2 border-purple-300"></td>
               </tr>
             )}
           </tbody>
