@@ -58,6 +58,7 @@ export default function RailTable({
     endClampWidth,
     buffer,
     purlinDistance,
+    railsPerSide,
     lengthsInput,
     enabledLengths,
     maxPieces,

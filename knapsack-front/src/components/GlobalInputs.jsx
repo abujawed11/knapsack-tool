@@ -9,6 +9,7 @@ export default function GlobalInputs({ settings, setSettings }) {
     endClampWidth,
     buffer,
     purlinDistance,
+    railsPerSide,
     lengthsInput,
     enabledLengths,
     userMode,
@@ -95,6 +96,19 @@ export default function GlobalInputs({ settings, setSettings }) {
             onChange={e => updateSetting('purlinDistance', e.target.value)}
             className="w-full rounded-lg border px-3 py-2 text-center font-medium"
           />
+        </div>
+        <div>
+          <label className="block text-sm text-gray-600 mb-1">No. of Rails per each side of Module</label>
+          <input
+            type="number"
+            value={railsPerSide}
+            onChange={e => updateSetting('railsPerSide', e.target.value)}
+            min="1"
+            className="w-full rounded-lg border px-3 py-2 text-center font-medium"
+          />
+          {Number(railsPerSide) === 1 && (
+            <p className="text-[11px] text-amber-600 mt-1">⚠ Min no. of Rails for each side is Typically 2</p>
+          )}
         </div>
         <div>
           <label className="block text-sm text-gray-600 mb-1">Priority</label>
