@@ -537,7 +537,7 @@ export default function RailTable({
             )}
             {/* Totals Row */}
             {rowResults.length > 0 && (
-              <tr className="bg-gradient-to-r from-purple-100 to-purple-50 font-bold border-t-4 border-purple-400 shadow-sm">
+              <tr className="bg-linear-to-r from-purple-100 to-purple-50 font-bold border-t-4 border-purple-400 shadow-sm">
                 <td className="px-3 py-3 border-b-2 border-purple-300 text-center text-purple-700">-</td>
                 <td className="px-3 py-3 border-b-2 border-purple-300 text-purple-800">{totals.modules}</td>
                 <td className="px-3 py-3 border-b-2 border-purple-300 text-center text-purple-800">{totals.endClamp}</td>
