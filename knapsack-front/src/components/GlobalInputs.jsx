@@ -58,34 +58,39 @@ export default function GlobalInputs({ settings, setSettings }) {
             type="number"
             value={moduleWidth}
             onChange={e => updateSetting('moduleWidth', e.target.value)}
-            className="w-full rounded-lg border px-3 py-2 text-center font-medium"
+            // className="w-full rounded-lg border px-3 py-2 text-center font-medium"
+            className="w-40 rounded-lg border px-2 py-1.5 text-center font-medium"
+
           />
         </div>
         <div>
-          <label className="block text-sm text-gray-600 mb-1">Mid Clamp (mm)</label>
+          <label className="block text-sm text-gray-600 mb-1">Mid Clamp Gap (mm)</label>
           <input
             type="number"
             value={midClamp}
             onChange={e => updateSetting('midClamp', e.target.value)}
-            className="w-full rounded-lg border px-3 py-2 text-center font-medium"
+            // className="w-full rounded-lg border px-3 py-2 text-center font-medium"
+            className="w-40 rounded-lg border px-2 py-1.5 text-center font-medium"
           />
         </div>
         <div>
-          <label className="block text-sm text-gray-600 mb-1">End Clamp (mm)</label>
+          <label className="block text-sm text-gray-600 mb-1">End Clamp after Module (mm)</label>
           <input
             type="number"
             value={endClampWidth}
             onChange={e => updateSetting('endClampWidth', e.target.value)}
-            className="w-full rounded-lg border px-3 py-2 text-center font-medium"
+            // className="w-full rounded-lg border px-3 py-2 text-center font-medium"
+            className="w-40 rounded-lg border px-2 py-1.5 text-center font-medium"
           />
         </div>
         <div>
-          <label className="block text-sm text-gray-600 mb-1">Buffer (mm)</label>
+          <label className="block text-sm text-gray-600 mb-1">Buffer after End Clamp (mm)</label>
           <input
             type="number"
             value={buffer}
             onChange={e => updateSetting('buffer', e.target.value)}
-            className="w-full rounded-lg border px-3 py-2 text-center font-medium"
+            // className="w-full rounded-lg border px-3 py-2 text-center font-medium"
+            className="w-40 rounded-lg border px-2 py-1.5 text-center font-medium"
           />
         </div>
         <div>
@@ -94,7 +99,8 @@ export default function GlobalInputs({ settings, setSettings }) {
             type="number"
             value={purlinDistance}
             onChange={e => updateSetting('purlinDistance', e.target.value)}
-            className="w-full rounded-lg border px-3 py-2 text-center font-medium"
+            // className="w-full rounded-lg border px-3 py-2 text-center font-medium"
+            className="w-40 rounded-lg border px-2 py-1.5 text-center font-medium"
           />
         </div>
         <div>
@@ -104,7 +110,8 @@ export default function GlobalInputs({ settings, setSettings }) {
             value={railsPerSide}
             onChange={e => updateSetting('railsPerSide', e.target.value)}
             min="1"
-            className="w-full rounded-lg border px-3 py-2 text-center font-medium"
+            // className="w-full rounded-lg border px-3 py-2 text-center font-medium"
+            className="w-40 rounded-lg border px-2 py-1.5 text-center font-medium"
           />
           {Number(railsPerSide) === 1 && (
             <p className="text-[11px] text-amber-600 mt-1">⚠ Min no. of Rails for each side is Typically 2</p>

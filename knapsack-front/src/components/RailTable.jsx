@@ -372,9 +372,9 @@ export default function RailTable({
             <tr>
               <th className="px-3 py-2 text-center font-medium text-gray-600 border-b">Quantity</th>
               <th className="px-3 py-2 text-left font-medium text-gray-600 border-b">Modules</th>
-              <th className="px-3 py-2 text-center font-medium text-gray-600 border-b cursor-help" title="End Clamp">EC</th>
-              <th className="px-3 py-2 text-center font-medium text-gray-600 border-b cursor-help" title="Mid Clamp">MC</th>
-              <th className="px-3 py-2 text-right font-medium text-gray-600 border-b cursor-help" title="Required Rail Length (mm)">Required</th>
+              <th className="px-3 py-2 text-center font-medium text-gray-600 border-b cursor-help" title="End Clamp">End Clamp</th>
+              <th className="px-3 py-2 text-center font-medium text-gray-600 border-b cursor-help" title="Mid Clamp">Mid Clamp</th>
+              <th className="px-3 py-2 text-center font-medium text-gray-600 border-b cursor-help" title="Required Rail Length (mm)">Required Rail Length</th>
               {allLengths.map(len => (
                 <th
                   key={len}
@@ -385,9 +385,9 @@ export default function RailTable({
                   {len}
                 </th>
               ))}
-              <th className="px-3 py-2 text-right font-medium text-gray-600 border-b cursor-help" title="Total Rail Length (mm)">Total</th>
-              <th className="px-3 py-2 text-right font-medium text-gray-600 border-b cursor-help" title="Wastage (Total - Required)">Difference</th>
-              <th className="px-3 py-2 text-right font-medium text-gray-600 border-b cursor-help" title="Percentage Extra Material">% Extra</th>
+              <th className="px-3 py-2 text-center font-medium text-gray-600 border-b cursor-help" title="Total Rail Length (mm)">Supply Rail Length</th>
+              <th className="px-3 py-2 text-center font-medium text-gray-600 border-b cursor-help" title="Wastage (Total - Required)">Extra Supply in mm</th>
+              <th className="px-3 py-2 text-center font-medium text-gray-600 border-b cursor-help" title="Percentage Extra Material">Extra Supply in %</th>
               <th className="px-3 py-2 text-center font-medium text-gray-600 border-b cursor-help" title="Number of Joints Required">Joints</th>
               <th className="px-3 py-2 text-center font-medium text-gray-600 border-b cursor-help" title="Support Base 1">SB1</th>
               <th className="px-3 py-2 text-center font-medium text-gray-600 border-b">
@@ -463,7 +463,7 @@ export default function RailTable({
                     <td className="px-3 py-2 text-center border-b">
                       {row.modules > 0 ? row.modules - 1 : 0}
                     </td>
-                    <td className="px-3 py-2 text-right border-b font-medium">
+                    <td className="px-3 py-2 text-center border-b font-medium">
                       {fmt(required)}
                     </td>
                     {allLengths.map(len => (
@@ -476,15 +476,15 @@ export default function RailTable({
                         {result?.ok ? (result.countsByLength[len] || 0) : '-'}
                       </td>
                     ))}
-                    <td className="px-3 py-2 text-right border-b font-medium">
+                    <td className="px-3 py-2 text-center border-b font-medium">
                       {result?.ok ? fmt(result.totalRailLength) : '-'}
                     </td>
-                    <td className={`px-3 py-2 text-right border-b ${
+                    <td className={`px-3 py-2 text-center border-b ${
                       result?.ok && result.overshootMm > 0 ? 'text-red-600' : ''
                     }`}>
                       {result?.ok ? fmt(result.overshootMm) : '-'}
                     </td>
-                    <td className={`px-3 py-2 text-right border-b ${
+                    <td className={`px-3 py-2 text-center border-b ${
                       result?.ok && result.overshootMm > 0 ? 'text-red-600' : ''
                     }`}>
                       {result?.ok ? `${extraPct}%` : '-'}
@@ -542,7 +542,7 @@ export default function RailTable({
                 <td className="px-3 py-3 border-b-2 border-purple-300 text-purple-800">{totals.modules}</td>
                 <td className="px-3 py-3 border-b-2 border-purple-300 text-center text-purple-800">{totals.endClamp}</td>
                 <td className="px-3 py-3 border-b-2 border-purple-300 text-center text-purple-800">{totals.midClamp}</td>
-                <td className="px-3 py-3 border-b-2 border-purple-300 text-right text-purple-800">
+                <td className="px-3 py-3 border-b-2 border-purple-300 text-center text-purple-800">
                   {fmt(totals.required)}
                 </td>
                 {allLengths.map(len => (
@@ -555,13 +555,13 @@ export default function RailTable({
                     {totals.countsByLength[len] || 0}
                   </td>
                 ))}
-                <td className="px-3 py-3 border-b-2 border-purple-300 text-right text-purple-800">
+                <td className="px-3 py-3 border-b-2 border-purple-300 text-center text-purple-800">
                   {fmt(totals.total)}
                 </td>
-                <td className="px-3 py-3 border-b-2 border-purple-300 text-right text-red-700 font-bold">
+                <td className="px-3 py-3 border-b-2 border-purple-300 text-center text-red-700 font-bold">
                   {fmt(totals.wastage)}
                 </td>
-                <td className="px-3 py-3 border-b-2 border-purple-300 text-right text-purple-800">
+                <td className="px-3 py-3 border-b-2 border-purple-300 text-center text-purple-800">
                   {totals.wastagePct}%
                 </td>
                 <td className="px-3 py-3 border-b-2 border-purple-300 text-center text-purple-800">
