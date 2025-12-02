@@ -132,8 +132,8 @@ export default function RailTable({
       return { row, required, combos, result };
     });
   }, [rows, moduleWidth, midClamp, endClampWidth, buffer, parsedLengths,
-      maxWastePct, allowUndershootPct, alphaJoint, betaSmall,
-      gammaShort, costPerMm, costPerJointSet, joinerLength, priority]);
+    maxWastePct, allowUndershootPct, alphaJoint, betaSmall,
+    gammaShort, costPerMm, costPerJointSet, joinerLength, priority]);
 
   // Calculate default SB1 value for a row
   const calculateSB1 = (required) => {
@@ -368,7 +368,132 @@ export default function RailTable({
 
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
+
           <thead className="bg-gray-50">
+            {/* Row 1: main headers + grouped title over cut lengths */}
+            <tr>
+              <th
+                rowSpan={2}
+                className="px-3 py-2 text-center font-medium text-gray-600 border-b"
+              >
+                Quantity
+              </th>
+              <th
+                rowSpan={2}
+                className="px-3 py-2 text-center font-medium text-gray-600 border-b"
+              >
+                Modules
+              </th>
+              <th
+                rowSpan={2}
+                className="px-3 py-2 text-center font-medium text-gray-600 border-b cursor-help"
+                title="End Clamp"
+              >
+                End Clamp
+              </th>
+              <th
+                rowSpan={2}
+                className="px-3 py-2 text-center font-medium text-gray-600 border-b cursor-help"
+                title="Mid Clamp"
+              >
+                Mid Clamp
+              </th>
+              <th
+                rowSpan={2}
+                className="px-3 py-2 text-center font-medium text-gray-600 border-b cursor-help"
+                title="Required Rail Length (mm)"
+              >
+                Required Rail Length
+              </th>
+
+              {/* Group header over all cut-length columns */}
+              <th
+                colSpan={allLengths.length}
+                className="px-3 py-2 text-center font-semibold text-purple-700 border-b border-x bg-purple-50"
+              >
+                Long Rail Cut length Combinations
+              </th>
+
+              <th
+                rowSpan={2}
+                className="px-3 py-2 text-center font-medium text-gray-600 border-b cursor-help"
+                title="Total Rail Length (mm)"
+              >
+                Supply Rail Length
+              </th>
+              <th
+                rowSpan={2}
+                className="px-3 py-2 text-center font-medium text-gray-600 border-b cursor-help"
+                title="Wastage (Total - Required)"
+              >
+                Extra Supply in mm
+              </th>
+              <th
+                rowSpan={2}
+                className="px-3 py-2 text-center font-medium text-gray-600 border-b cursor-help"
+                title="Percentage Extra Material"
+              >
+                Extra Supply in %
+              </th>
+              <th
+                rowSpan={2}
+                className="px-3 py-2 text-center font-medium text-gray-600 border-b cursor-help"
+                title="Number of Joints Required"
+              >
+                Joints
+              </th>
+              <th
+                rowSpan={2}
+                className="px-3 py-2 text-center font-medium text-gray-600 border-b cursor-help"
+                title="Support Base 1"
+              >
+                SB1
+              </th>
+              <th
+                rowSpan={2}
+                className="px-3 py-2 text-center font-medium text-gray-600 border-b"
+              >
+                <div className="flex items-center justify-center gap-1">
+                  <input
+                    type="checkbox"
+                    checked={enableSB2}
+                    onChange={(e) => setEnableSB2(e.target.checked)}
+                    className="w-3.5 h-3.5 text-purple-600 rounded cursor-pointer"
+                    title="Enable Support Base 2 column"
+                  />
+                  <span className="cursor-help" title="Support Base 2">
+                    SB2
+                  </span>
+                </div>
+              </th>
+              <th
+                rowSpan={2}
+                className="px-2 py-2 border-b"
+              />
+            </tr>
+
+            {/* Row 2: individual cut-length headers */}
+            <tr>
+              {allLengths.map((len) => (
+                <th
+                  key={len}
+                  className={`px-2 py-2 text-center font-medium border-b ${enabledLengths[len] !== false ? 'text-gray-600' : 'text-gray-300'
+                    }`}
+                >
+                  {len}
+                </th>
+              ))}
+            </tr>
+          </thead>
+
+          {/* <thead className="bg-gray-50">
+            <tr className="bg-gray-100">
+              <th colSpan={5} className="px-3 py-1 border-b bg-gray-50"></th>
+              <th colSpan={allLengths.length} className="px-3 py-2 text-center font-semibold text-purple-700 border-b border-l border-r bg-purple-50">
+                Long Rail Cut length Combinations
+              </th>
+              <th colSpan={7} className="px-3 py-1 border-b bg-gray-50"></th>
+            </tr>
             <tr>
               <th className="px-3 py-2 text-center font-medium text-gray-600 border-b">Quantity</th>
               <th className="px-3 py-2 text-left font-medium text-gray-600 border-b">Modules</th>
@@ -404,7 +529,7 @@ export default function RailTable({
               </th>
               <th className="px-2 py-2 border-b"></th>
             </tr>
-          </thead>
+          </thead> */}
           <tbody>
             {rowResults.length === 0 ? (
               <tr>
@@ -431,11 +556,10 @@ export default function RailTable({
                       setSelectedRowId(row.id);
                       setShowModal(true);
                     }}
-                    className={`cursor-pointer transition-colors ${
-                      isSelected
+                    className={`cursor-pointer transition-colors ${isSelected
                         ? 'bg-purple-50 border-l-4 border-l-purple-500'
                         : 'hover:bg-gray-50'
-                    }`}
+                      }`}
                   >
                     <td className="px-3 py-2 border-b">
                       <input
@@ -469,9 +593,8 @@ export default function RailTable({
                     {allLengths.map(len => (
                       <td
                         key={len}
-                        className={`px-2 py-2 text-center border-b ${
-                          enabledLengths[len] !== false ? '' : 'text-gray-300'
-                        }`}
+                        className={`px-2 py-2 text-center border-b ${enabledLengths[len] !== false ? '' : 'text-gray-300'
+                          }`}
                       >
                         {result?.ok ? (result.countsByLength[len] || 0) : '-'}
                       </td>
@@ -479,14 +602,12 @@ export default function RailTable({
                     <td className="px-3 py-2 text-center border-b font-medium">
                       {result?.ok ? fmt(result.totalRailLength) : '-'}
                     </td>
-                    <td className={`px-3 py-2 text-center border-b ${
-                      result?.ok && result.overshootMm > 0 ? 'text-red-600' : ''
-                    }`}>
+                    <td className={`px-3 py-2 text-center border-b ${result?.ok && result.overshootMm > 0 ? 'text-red-600' : ''
+                      }`}>
                       {result?.ok ? fmt(result.overshootMm) : '-'}
                     </td>
-                    <td className={`px-3 py-2 text-center border-b ${
-                      result?.ok && result.overshootMm > 0 ? 'text-red-600' : ''
-                    }`}>
+                    <td className={`px-3 py-2 text-center border-b ${result?.ok && result.overshootMm > 0 ? 'text-red-600' : ''
+                      }`}>
                       {result?.ok ? `${extraPct}%` : '-'}
                     </td>
                     <td className="px-3 py-2 text-center border-b">
@@ -548,9 +669,8 @@ export default function RailTable({
                 {allLengths.map(len => (
                   <td
                     key={len}
-                    className={`px-2 py-3 text-center border-b-2 border-purple-300 ${
-                      enabledLengths[len] !== false ? 'text-purple-800 font-bold' : 'text-gray-400'
-                    }`}
+                    className={`px-2 py-3 text-center border-b-2 border-purple-300 ${enabledLengths[len] !== false ? 'text-purple-800 font-bold' : 'text-gray-400'
+                      }`}
                   >
                     {totals.countsByLength[len] || 0}
                   </td>
