@@ -17,6 +17,7 @@ export default function RailTable({
   const [showSettings, setShowSettings] = useState(false);
   const [enableSB2, setEnableSB2] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [deleteConfirmRowId, setDeleteConfirmRowId] = useState(null);
 
   // Draggable state
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -650,16 +651,50 @@ export default function RailTable({
                         '-'
                       )}
                     </td>
-                    <td className="px-2 py-2 border-b">
+                    <td className="px-2 py-2 border-b relative">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          deleteRow(row.id);
+                          setDeleteConfirmRowId(row.id);
                         }}
-                        className="text-gray-400 hover:text-red-500"
+                        className="text-red-500 hover:text-red-700 text-2xl font-bold transition-colors"
+                        title="Delete row"
                       >
                         ×
                       </button>
+
+                      {/* Delete Confirmation Dialog */}
+                      {deleteConfirmRowId === row.id && (
+                        <div
+                          className="absolute right-0 top-1/2 -translate-y-1/2 mr-12 z-50 bg-white border-2 border-red-400 rounded-lg shadow-xl p-3 min-w-[200px]"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <p className="text-sm font-medium text-gray-700 mb-3">
+                            Delete this row?
+                          </p>
+                          <div className="flex gap-2 justify-end">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteConfirmRowId(null);
+                              }}
+                              className="px-3 py-1 text-sm font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded transition-colors"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteRow(row.id);
+                                setDeleteConfirmRowId(null);
+                              }}
+                              className="px-3 py-1 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded transition-colors"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 );
