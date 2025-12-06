@@ -52,14 +52,14 @@ export default function GlobalInputs({ settings, setSettings }) {
     <div className="bg-white rounded-2xl border shadow-sm p-6">
       <h2 className="text-lg font-semibold mb-4">Global Parameters</h2>
 
-      {/* 2x2 Grid Layout */}
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        {/* Top Left - Module Parameters */}
-        <div className="border-2 border-blue-200 rounded-xl p-3 bg-blue-50/30">
+      {/* 3 Columns in One Row */}
+      <div className="grid grid-cols-3 gap-3 mb-3">
+        {/* Module Parameters */}
+        <div className="border-2 border-blue-200 rounded-lg p-2.5 bg-blue-50/30">
           <h3 className="text-xs font-bold text-blue-700 mb-2 uppercase tracking-wide">Module Parameters</h3>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-1.5">
             <div>
-              <label className="block text-xs text-gray-600 mb-0.5">Module Length (mm)</label>
+              <label className="block text-[14px] text-gray-600 mb-0.5">Module Length (mm)</label>
               <input
                 type="number"
                 value={moduleLength}
@@ -68,7 +68,7 @@ export default function GlobalInputs({ settings, setSettings }) {
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-600 mb-0.5">Module Width (mm)</label>
+              <label className="block text-[14px] text-gray-600 mb-0.5">Module Width (mm)</label>
               <input
                 type="number"
                 value={moduleWidth}
@@ -77,7 +77,7 @@ export default function GlobalInputs({ settings, setSettings }) {
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-600 mb-0.5">Frame Thickness (mm)</label>
+              <label className="block text-[14px] text-gray-600 mb-0.5">Frame Thickness (mm)</label>
               <input
                 type="number"
                 value={frameThickness}
@@ -91,12 +91,12 @@ export default function GlobalInputs({ settings, setSettings }) {
           </div>
         </div>
 
-        {/* Top Right - MMS Parameters */}
-        <div className="border-2 border-purple-200 rounded-xl p-3 bg-purple-50/30">
+        {/* MMS Parameters */}
+        <div className="border-2 border-purple-200 rounded-lg p-2.5 bg-purple-50/30">
           <h3 className="text-xs font-bold text-purple-700 mb-2 uppercase tracking-wide">MMS Parameters</h3>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-1.5">
             <div>
-              <label className="block text-xs text-gray-600 mb-0.5">End Clamp after Module (mm)</label>
+              <label className="block text-[14px] text-gray-600 mb-0.5">End Clamp (mm)</label>
               <input
                 type="number"
                 value={endClampWidth}
@@ -105,7 +105,7 @@ export default function GlobalInputs({ settings, setSettings }) {
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-600 mb-0.5">Mid Clamp Gap (mm)</label>
+              <label className="block text-[14px] text-gray-600 mb-0.5">Mid Clamp (mm)</label>
               <input
                 type="number"
                 value={midClamp}
@@ -114,7 +114,7 @@ export default function GlobalInputs({ settings, setSettings }) {
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-600 mb-0.5">Buffer after End Clamp (mm)</label>
+              <label className="block text-[14px] text-gray-600 mb-0.5">Buffer (mm)</label>
               <input
                 type="number"
                 value={buffer}
@@ -123,7 +123,7 @@ export default function GlobalInputs({ settings, setSettings }) {
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-600 mb-0.5">No. of Rails per each side</label>
+              <label className="block text-[14px] text-gray-600 mb-0.5">Rails/side</label>
               <input
                 type="number"
                 value={railsPerSide}
@@ -132,63 +132,58 @@ export default function GlobalInputs({ settings, setSettings }) {
                 className="w-full rounded border px-2 py-1 text-sm text-center font-medium"
               />
               {Number(railsPerSide) === 1 && (
-                <p className="text-[10px] text-amber-600 mt-0.5">⚠ Min typically 2</p>
+                <p className="text-[10px] text-amber-600 mt-0.5">⚠ Min 2</p>
               )}
             </div>
           </div>
         </div>
 
-        {/* Bottom Left - Site Parameters */}
-        <div className="border-2 border-green-200 rounded-xl p-3 bg-green-50/30">
+        {/* Site Parameters */}
+        <div className="border-2 border-green-200 rounded-lg p-2.5 bg-green-50/30">
           <h3 className="text-xs font-bold text-green-700 mb-2 uppercase tracking-wide">Site Parameters</h3>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="block text-xs text-gray-600 mb-0.5">Purlin to Purlin Distance (mm)</label>
-              <input
-                type="number"
-                value={purlinDistance}
-                onChange={e => updateSetting('purlinDistance', e.target.value)}
-                className="w-full rounded border px-2 py-1 text-sm text-center font-medium"
-              />
-            </div>
-            <div>
-              {/* Empty box */}
-            </div>
+          <div>
+            <label className="block text-[14px] text-gray-600 mb-0.5">Purlin to Purlin Distance (mm)</label>
+            <input
+              type="number"
+              value={purlinDistance}
+              onChange={e => updateSetting('purlinDistance', e.target.value)}
+              className="w-full rounded border px-2 py-1 text-sm text-center font-medium"
+            />
           </div>
         </div>
+      </div>
 
-        {/* Bottom Right - Priority */}
-        <div className="border-2 border-orange-200 rounded-xl p-3 bg-orange-50/30">
-          <h3 className="text-xs font-bold text-orange-700 mb-2 uppercase tracking-wide">Priority</h3>
-          <div className="flex flex-col gap-2">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                checked={priority === 'cost'}
-                onChange={() => updateSetting('priority', 'cost')}
-                className="w-3.5 h-3.5 text-orange-600"
-              />
-              <span className="text-xs font-medium">Cost</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                checked={priority === 'length'}
-                onChange={() => updateSetting('priority', 'length')}
-                className="w-3.5 h-3.5 text-orange-600"
-              />
-              <span className="text-xs font-medium">Length</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                checked={priority === 'joints'}
-                onChange={() => updateSetting('priority', 'joints')}
-                className="w-3.5 h-3.5 text-orange-600"
-              />
-              <span className="text-xs font-medium">Joints</span>
-            </label>
-          </div>
+      {/* Priority - Separate Row */}
+      <div className="border-2 border-orange-200 rounded-lg p-2.5 bg-orange-50/30 mb-3">
+        <h3 className="text-xs font-bold text-orange-700 mb-2 uppercase tracking-wide">Priority</h3>
+        <div className="flex gap-4">
+          <label className="flex items-center gap-1.5 cursor-pointer">
+            <input
+              type="radio"
+              checked={priority === 'cost'}
+              onChange={() => updateSetting('priority', 'cost')}
+              className="w-3.5 h-3.5 text-orange-600"
+            />
+            <span className="text-xs font-medium">Cost</span>
+          </label>
+          <label className="flex items-center gap-1.5 cursor-pointer">
+            <input
+              type="radio"
+              checked={priority === 'length'}
+              onChange={() => updateSetting('priority', 'length')}
+              className="w-3.5 h-3.5 text-orange-600"
+            />
+            <span className="text-xs font-medium">Length</span>
+          </label>
+          <label className="flex items-center gap-1.5 cursor-pointer">
+            <input
+              type="radio"
+              checked={priority === 'joints'}
+              onChange={() => updateSetting('priority', 'joints')}
+              className="w-3.5 h-3.5 text-orange-600"
+            />
+            <span className="text-xs font-medium">Joints</span>
+          </label>
         </div>
       </div>
 
