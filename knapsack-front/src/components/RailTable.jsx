@@ -4,6 +4,214 @@ import { optimizeCuts, requiredRailLength, generateScenarios } from '../lib/opti
 import { parseNumList, fmt } from '../lib/storage';
 import { TextField, NumberField } from './ui';
 import ResultCard from './ResultCard';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+// Sortable Row Component
+function SortableRow({
+  row,
+  required,
+  result,
+  isSelected,
+  enableSB2,
+  allLengths,
+  enabledLengths,
+  calculateSB1,
+  updateRowQuantity,
+  updateRowModules,
+  updateRowSupportBase,
+  setSelectedRowId,
+  setShowModal,
+  deleteConfirmRowId,
+  setDeleteConfirmRowId,
+  deleteRow
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: row.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const extraPct = result?.ok && required > 0
+    ? ((result.overshootMm / required) * 100).toFixed(2)
+    : '-';
+
+  const defaultSB1 = calculateSB1(required);
+  const sb1Value = enableSB2 ? (row.supportBase1 ?? defaultSB1) : defaultSB1;
+  const sb2Value = row.supportBase2 ?? 0;
+
+  return (
+    <tr
+      ref={setNodeRef}
+      style={style}
+      onClick={() => {
+        setSelectedRowId(row.id);
+        setShowModal(true);
+      }}
+      className={`cursor-pointer transition-colors ${
+        isSelected ? 'bg-purple-50 border-l-4 border-l-purple-500' : 'hover:bg-gray-50'
+      }`}
+    >
+      {/* Drag Handle */}
+      <td
+        className="px-2 py-2 border-b text-center cursor-grab active:cursor-grabbing"
+        onClick={(e) => e.stopPropagation()}
+        {...attributes}
+        {...listeners}
+      >
+        <span className="text-gray-400 hover:text-purple-600 text-xl select-none">⋮⋮</span>
+      </td>
+      <td className="px-3 py-2 border-b">
+        <input
+          type="number"
+          value={row.quantity ?? 1}
+          onChange={(e) => updateRowQuantity(row.id, e.target.value)}
+          onClick={(e) => e.stopPropagation()}
+          className="w-16 px-2 py-1 border rounded text-center"
+          min="1"
+        />
+      </td>
+      <td className="px-3 py-2 border-b">
+        <input
+          type="number"
+          value={row.modules}
+          onChange={(e) => updateRowModules(row.id, e.target.value)}
+          onClick={(e) => e.stopPropagation()}
+          className="w-16 px-2 py-1 border rounded text-center"
+          min="1"
+        />
+      </td>
+      <td className="px-3 py-2 text-center border-b">
+        2
+      </td>
+      <td className="px-3 py-2 text-center border-b">
+        {row.modules > 0 ? row.modules - 1 : 0}
+      </td>
+      <td className="px-3 py-2 text-center border-b font-medium">
+        {fmt(required)}
+      </td>
+      {allLengths.map(len => (
+        <td
+          key={len}
+          className={`px-2 py-2 text-center border-b ${enabledLengths[len] !== false ? '' : 'text-gray-300'
+            }`}
+        >
+          {result?.ok ? (result.countsByLength[len] || 0) : '-'}
+        </td>
+      ))}
+      <td className="px-3 py-2 text-center border-b font-medium">
+        {result?.ok ? fmt(result.totalRailLength) : '-'}
+      </td>
+      <td className={`px-3 py-2 text-center border-b ${result?.ok && result.overshootMm > 0 ? 'text-red-600' : ''
+        }`}>
+        {result?.ok ? fmt(result.overshootMm) : '-'}
+      </td>
+      <td className={`px-3 py-2 text-center border-b ${result?.ok && result.overshootMm > 0 ? 'text-red-600' : ''
+        }`}>
+        {result?.ok ? `${extraPct}%` : '-'}
+      </td>
+      <td className="px-3 py-2 text-center border-b">
+        {result?.ok ? result.joints : '-'}
+      </td>
+      <td className="px-3 py-2 text-center border-b">
+        {enableSB2 ? (
+          <input
+            type="number"
+            value={sb1Value}
+            onChange={(e) => updateRowSupportBase(row.id, 'supportBase1', e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+            className="w-16 px-2 py-1 border rounded text-center"
+            min="0"
+          />
+        ) : (
+          defaultSB1
+        )}
+      </td>
+      <td className="px-3 py-2 text-center border-b">
+        {enableSB2 ? (
+          <input
+            type="number"
+            value={sb2Value}
+            onChange={(e) => updateRowSupportBase(row.id, 'supportBase2', e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+            className="w-16 px-2 py-1 border rounded text-center"
+            min="0"
+          />
+        ) : (
+          '-'
+        )}
+      </td>
+      <td className="px-2 py-2 border-b relative">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setDeleteConfirmRowId(row.id);
+          }}
+          className="text-red-500 hover:text-red-700 text-2xl font-bold transition-colors"
+          title="Delete row"
+        >
+          ×
+        </button>
+
+        {/* Delete Confirmation Dialog */}
+        {deleteConfirmRowId === row.id && (
+          <div
+            className="absolute right-0 top-1/2 -translate-y-1/2 mr-12 z-50 bg-white border-2 border-red-400 rounded-lg shadow-xl p-3 min-w-[200px]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-sm font-medium text-gray-700 mb-3">
+              Delete this row?
+            </p>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDeleteConfirmRowId(null);
+                }}
+                className="px-3 py-1 text-sm font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  deleteRow(row.id);
+                  setDeleteConfirmRowId(null);
+                }}
+                className="px-3 py-1 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        )}
+      </td>
+    </tr>
+  );
+}
 
 export default function RailTable({
   rows,
@@ -18,6 +226,14 @@ export default function RailTable({
   const [enableSB2, setEnableSB2] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [deleteConfirmRowId, setDeleteConfirmRowId] = useState(null);
+
+  // Drag and drop sensors for @dnd-kit
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // Draggable state
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -255,6 +471,17 @@ export default function RailTable({
     setRows(rows.map(r => r.id === id ? { ...r, [field]: Number(value) || 0 } : r));
   };
 
+  // Drag and drop handler for @dnd-kit
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = rows.findIndex((row) => row.id === active.id);
+      const newIndex = rows.findIndex((row) => row.id === over.id);
+      setRows(arrayMove(rows, oldIndex, newIndex));
+    }
+  };
+
   return (
     <div className="bg-white rounded-2xl border shadow-sm">
       <div className="flex justify-between items-center px-4 py-3 border-b">
@@ -377,11 +604,27 @@ export default function RailTable({
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={rows.map(r => r.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <table className="w-full text-sm">
 
-          <thead className="bg-gray-50">
+              <thead className="bg-gray-50">
             {/* Row 1: main headers + grouped title over cut lengths */}
             <tr>
+              <th
+                rowSpan={2}
+                className="px-2 py-2 text-center font-medium text-gray-600 border-b"
+                title="Drag to reorder"
+              >
+                ⋮⋮
+              </th>
               <th
                 rowSpan={2}
                 className="px-3 py-2 text-center font-medium text-gray-600 border-b"
@@ -540,169 +783,40 @@ export default function RailTable({
               <th className="px-2 py-2 border-b"></th>
             </tr>
           </thead> */}
-          <tbody>
-            {rowResults.length === 0 ? (
-              <tr>
-                <td colSpan={allLengths.length + 11} className="px-4 py-8 text-center text-gray-500">
-                  No rows yet. Click "Add Row" to get started.
-                </td>
-              </tr>
-            ) : (
-              rowResults.map(({ row, required, result }) => {
-                const isSelected = row.id === selectedRowId;
-                const extraPct = result?.ok && required > 0
-                  ? ((result.overshootMm / required) * 100).toFixed(2)
-                  : '-';
-
-                // Calculate default SB1
-                const defaultSB1 = calculateSB1(required);
-                const sb1Value = enableSB2 ? (row.supportBase1 ?? defaultSB1) : defaultSB1;
-                const sb2Value = row.supportBase2 ?? 0;
-
-                return (
-                  <tr
-                    key={row.id}
-                    onClick={() => {
-                      setSelectedRowId(row.id);
-                      setShowModal(true);
-                    }}
-                    className={`cursor-pointer transition-colors ${isSelected
-                        ? 'bg-purple-50 border-l-4 border-l-purple-500'
-                        : 'hover:bg-gray-50'
-                      }`}
-                  >
-                    <td className="px-3 py-2 border-b">
-                      <input
-                        type="number"
-                        value={row.quantity ?? 1}
-                        onChange={(e) => updateRowQuantity(row.id, e.target.value)}
-                        onClick={(e) => e.stopPropagation()}
-                        className="w-16 px-2 py-1 border rounded text-center"
-                        min="1"
-                      />
-                    </td>
-                    <td className="px-3 py-2 border-b">
-                      <input
-                        type="number"
-                        value={row.modules}
-                        onChange={(e) => updateRowModules(row.id, e.target.value)}
-                        onClick={(e) => e.stopPropagation()}
-                        className="w-16 px-2 py-1 border rounded text-center"
-                        min="1"
-                      />
-                    </td>
-                    <td className="px-3 py-2 text-center border-b">
-                      2
-                    </td>
-                    <td className="px-3 py-2 text-center border-b">
-                      {row.modules > 0 ? row.modules - 1 : 0}
-                    </td>
-                    <td className="px-3 py-2 text-center border-b font-medium">
-                      {fmt(required)}
-                    </td>
-                    {allLengths.map(len => (
-                      <td
-                        key={len}
-                        className={`px-2 py-2 text-center border-b ${enabledLengths[len] !== false ? '' : 'text-gray-300'
-                          }`}
-                      >
-                        {result?.ok ? (result.countsByLength[len] || 0) : '-'}
-                      </td>
-                    ))}
-                    <td className="px-3 py-2 text-center border-b font-medium">
-                      {result?.ok ? fmt(result.totalRailLength) : '-'}
-                    </td>
-                    <td className={`px-3 py-2 text-center border-b ${result?.ok && result.overshootMm > 0 ? 'text-red-600' : ''
-                      }`}>
-                      {result?.ok ? fmt(result.overshootMm) : '-'}
-                    </td>
-                    <td className={`px-3 py-2 text-center border-b ${result?.ok && result.overshootMm > 0 ? 'text-red-600' : ''
-                      }`}>
-                      {result?.ok ? `${extraPct}%` : '-'}
-                    </td>
-                    <td className="px-3 py-2 text-center border-b">
-                      {result?.ok ? result.joints : '-'}
-                    </td>
-                    <td className="px-3 py-2 text-center border-b">
-                      {enableSB2 ? (
-                        <input
-                          type="number"
-                          value={sb1Value}
-                          onChange={(e) => updateRowSupportBase(row.id, 'supportBase1', e.target.value)}
-                          onClick={(e) => e.stopPropagation()}
-                          className="w-16 px-2 py-1 border rounded text-center"
-                          min="0"
-                        />
-                      ) : (
-                        defaultSB1
-                      )}
-                    </td>
-                    <td className="px-3 py-2 text-center border-b">
-                      {enableSB2 ? (
-                        <input
-                          type="number"
-                          value={sb2Value}
-                          onChange={(e) => updateRowSupportBase(row.id, 'supportBase2', e.target.value)}
-                          onClick={(e) => e.stopPropagation()}
-                          className="w-16 px-2 py-1 border rounded text-center"
-                          min="0"
-                        />
-                      ) : (
-                        '-'
-                      )}
-                    </td>
-                    <td className="px-2 py-2 border-b relative">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeleteConfirmRowId(row.id);
-                        }}
-                        className="text-red-500 hover:text-red-700 text-2xl font-bold transition-colors"
-                        title="Delete row"
-                      >
-                        ×
-                      </button>
-
-                      {/* Delete Confirmation Dialog */}
-                      {deleteConfirmRowId === row.id && (
-                        <div
-                          className="absolute right-0 top-1/2 -translate-y-1/2 mr-12 z-50 bg-white border-2 border-red-400 rounded-lg shadow-xl p-3 min-w-[200px]"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <p className="text-sm font-medium text-gray-700 mb-3">
-                            Delete this row?
-                          </p>
-                          <div className="flex gap-2 justify-end">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setDeleteConfirmRowId(null);
-                              }}
-                              className="px-3 py-1 text-sm font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded transition-colors"
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                deleteRow(row.id);
-                                setDeleteConfirmRowId(null);
-                              }}
-                              className="px-3 py-1 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded transition-colors"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </div>
-                      )}
+              <tbody>
+                {rowResults.length === 0 ? (
+                  <tr>
+                    <td colSpan={allLengths.length + 12} className="px-4 py-8 text-center text-gray-500">
+                      No rows yet. Click "Add Row" to get started.
                     </td>
                   </tr>
-                );
-              })
-            )}
+                ) : (
+                  rowResults.map(({ row, required, result }) => (
+                    <SortableRow
+                      key={row.id}
+                      row={row}
+                      required={required}
+                      result={result}
+                      isSelected={row.id === selectedRowId}
+                      enableSB2={enableSB2}
+                      allLengths={allLengths}
+                      enabledLengths={enabledLengths}
+                      calculateSB1={calculateSB1}
+                      updateRowQuantity={updateRowQuantity}
+                      updateRowModules={updateRowModules}
+                      updateRowSupportBase={updateRowSupportBase}
+                      setSelectedRowId={setSelectedRowId}
+                      setShowModal={setShowModal}
+                      deleteConfirmRowId={deleteConfirmRowId}
+                      setDeleteConfirmRowId={setDeleteConfirmRowId}
+                      deleteRow={deleteRow}
+                    />
+                  ))
+                )}
             {/* Totals Row */}
             {rowResults.length > 0 && (
               <tr className="bg-linear-to-r from-purple-100 to-purple-50 font-bold border-t-4 border-purple-400 shadow-sm">
+                <td className="px-2 py-3 border-b-2 border-purple-300 text-center text-purple-700"></td>
                 <td className="px-3 py-3 border-b-2 border-purple-300 text-center text-purple-700">-</td>
                 <td className="px-3 py-3 border-b-2 border-purple-300 text-purple-800">{totals.modules}</td>
                 <td className="px-3 py-3 border-b-2 border-purple-300 text-center text-purple-800">{totals.endClamp}</td>
@@ -738,8 +852,10 @@ export default function RailTable({
                 <td className="px-2 py-3 border-b-2 border-purple-300"></td>
               </tr>
             )}
-          </tbody>
-        </table>
+              </tbody>
+            </table>
+          </SortableContext>
+        </DndContext>
       </div>
 
       {/* Overall Summary Card */}
