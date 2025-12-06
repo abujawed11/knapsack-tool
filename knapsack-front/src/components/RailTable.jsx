@@ -485,7 +485,7 @@ export default function RailTable({
   return (
     <div className="bg-white rounded-2xl border shadow-sm">
       <div className="flex justify-between items-center px-4 py-3 border-b">
-        <h2 className="font-semibold">Rail Calculations</h2>
+        <h2 className="font-semibold">Basic MMS Calculation</h2>
         <div className="flex items-center gap-2">
           <button
             onClick={addRow}

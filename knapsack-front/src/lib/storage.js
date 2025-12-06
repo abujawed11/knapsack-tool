@@ -5,7 +5,9 @@ export const DEFAULT_LENGTHS = [1595, 1798, 2400, 2750, 3200, 3600, 4800];
 
 export const DEFAULT_SETTINGS = {
   userMode: 'normal',
-  moduleWidth: 1303,
+  moduleLength: 2278,
+  moduleWidth: 1134,
+  frameThickness: 35,
   midClamp: 20,
   endClampWidth: 40,
   buffer: 15,
