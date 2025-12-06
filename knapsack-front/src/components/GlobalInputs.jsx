@@ -4,9 +4,9 @@ import { parseNumList } from '../lib/storage';
 
 export default function GlobalInputs({ settings, setSettings }) {
   const {
-    moduleLength,
-    moduleWidth,
-    frameThickness,
+    moduleLength = 2278,
+    moduleWidth = 1134,
+    frameThickness = 35,
     midClamp,
     endClampWidth,
     buffer,
@@ -141,14 +141,19 @@ export default function GlobalInputs({ settings, setSettings }) {
         {/* Bottom Left - Site Parameters */}
         <div className="border-2 border-green-200 rounded-xl p-3 bg-green-50/30">
           <h3 className="text-xs font-bold text-green-700 mb-2 uppercase tracking-wide">Site Parameters</h3>
-          <div>
-            <label className="block text-xs text-gray-600 mb-0.5">Purlin to Purlin Distance (mm)</label>
-            <input
-              type="number"
-              value={purlinDistance}
-              onChange={e => updateSetting('purlinDistance', e.target.value)}
-              className="w-full rounded border px-2 py-1 text-sm text-center font-medium"
-            />
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-xs text-gray-600 mb-0.5">Purlin to Purlin Distance (mm)</label>
+              <input
+                type="number"
+                value={purlinDistance}
+                onChange={e => updateSetting('purlinDistance', e.target.value)}
+                className="w-full rounded border px-2 py-1 text-sm text-center font-medium"
+              />
+            </div>
+            <div>
+              {/* Empty box */}
+            </div>
           </div>
         </div>
 
