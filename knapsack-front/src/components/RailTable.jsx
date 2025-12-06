@@ -186,7 +186,7 @@ export default function RailTable({
       // SB1 and SB2 calculations
       const defaultSB1 = calculateSB1(required);
       const sb1Value = enableSB2 ? (row.supportBase1 ?? defaultSB1) : defaultSB1;
-      const sb2Value = row.supportBase2 ?? 0;
+      const sb2Value = enableSB2 ? (row.supportBase2 ?? 0) : 0;
 
       result.sb1 += sb1Value * qty;
       result.sb2 += sb2Value * qty;
@@ -194,7 +194,7 @@ export default function RailTable({
 
     // Multiply all totals by railsPerSide
     const rps = Number(railsPerSide) || 1;
-    result.modules *= rps;
+    // result.modules *= rps;
     result.endClamp *= rps;
     result.midClamp *= rps;
     result.required *= rps;
@@ -213,6 +213,15 @@ export default function RailTable({
     result.wastagePct = result.required > 0
       ? ((result.wastage / result.required) * 100).toFixed(2)
       : 0;
+
+    // Debug logging for Ratio of Supports to module
+    // console.log('=== Supports Calculation Debug ===');
+    // console.log('totals.sb1:', result.sb1);
+    // console.log('totals.sb2:', result.sb2);
+    // console.log('totals.modules:', result.modules);
+    // console.log('Sum (sb1 + sb2):', result.sb1 + result.sb2);
+    // console.log('Ratio (sb1+sb2)/modules:', result.modules > 0 ? ((result.sb1 + result.sb2) / result.modules) : 0);
+    // console.log('==================================');
 
     return result;
   }, [rowResults, allLengths, railsPerSide, enableSB2]);
@@ -701,28 +710,65 @@ export default function RailTable({
       {/* Overall Summary Card */}
       {rowResults.length > 0 && (
         <div className="border-t bg-linear-to-r from-purple-50 to-green-50 px-4 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex gap-8">
-              <div>
-                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Required</span>
-                <p className="text-lg font-bold text-purple-700">{fmt(totals.required)} mm</p>
-              </div>
-              <div>
-                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Rail Length</span>
-                <p className="text-lg font-bold text-purple-700">{fmt(totals.total)} mm</p>
-              </div>
-              <div>
-                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Overall Wastage</span>
-                <p className="text-lg font-bold text-red-600">{fmt(totals.wastage)} mm ({totals.wastagePct}%)</p>
-              </div>
-              <div>
-                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Joints</span>
-                <p className="text-lg font-bold text-purple-700">{totals.joints}</p>
-              </div>
+          <div className="grid grid-cols-2 gap-4">
+            {/* Ratio 1: Module clamps to module */}
+            <div className="bg-white rounded-lg p-4 shadow-sm border border-purple-200">
+              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide block mb-1">
+                Ratio of module clamps to module
+              </span>
+              <p className="text-xl font-bold text-purple-700">
+                {totals.modules > 0
+                  ? ((totals.endClamp + totals.midClamp) / totals.modules).toFixed(2)
+                  : '0.00'}
+              </p>
+              {/* <p className="text-xs text-gray-400 mt-1">
+                ({totals.endClamp + totals.midClamp}) / {totals.modules}
+              </p> */}
             </div>
-            <div className="text-right">
-              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Overall Cost</span>
-              <p className="text-2xl font-bold text-green-600">₹{totals.cost.toFixed(2)}</p>
+
+            {/* Ratio 2: Rail length per module */}
+            <div className="bg-white rounded-lg p-4 shadow-sm border border-purple-200">
+              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide block mb-1">
+               Ratio of Rail Length to modules (OR)  Rail length per module
+              </span>
+              <p className="text-xl font-bold text-purple-700">
+                {totals.modules > 0
+                  ? (totals.total / totals.modules).toFixed(2)
+                  : '0.00'} mm
+              </p>
+              {/* <p className="text-xs text-gray-400 mt-1">
+                {fmt(totals.total)} / {totals.modules}
+              </p> */}
+            </div>
+
+            {/* Ratio 3: Supports to Rail */}
+            <div className="bg-white rounded-lg p-4 shadow-sm border border-purple-200">
+              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide block mb-1">
+                Ratio of Supports to Rail
+              </span>
+              <p className="text-xl font-bold text-purple-700">
+                {totals.total > 0
+                  ? ((totals.sb1 + totals.sb2) / totals.total).toFixed(6)
+                  : '0.00'}
+              </p>
+              {/* <p className="text-xs text-gray-400 mt-1">
+                ({totals.sb1 + totals.sb2}) / {fmt(totals.total)}
+              </p> */}
+            </div>
+
+            {/* Ratio 4: Supports to module */}
+            <div className="bg-white rounded-lg p-4 shadow-sm border border-purple-200">
+              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide block mb-1">
+                Ratio of Supports to module
+              </span>
+              <p className="text-xl font-bold text-purple-700">
+                {totals.modules > 0
+                  ? ((totals.sb1 + totals.sb2) / totals.modules).toFixed(2)
+                  : '0.00'}
+              </p>
+              {/* <p className="text-xs text-gray-400 mt-1">
+                ({totals.sb1 + totals.sb2}) / {totals.modules}
+              </p> */}
             </div>
           </div>
         </div>
