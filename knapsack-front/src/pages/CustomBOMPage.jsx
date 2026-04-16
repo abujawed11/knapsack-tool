@@ -356,6 +356,245 @@ function AddItemModal({ isOpen, profiles, rates, sparePercent, onClose, onAdd })
   );
 }
 
+// ── Add Custom Item Modal ─────────────────────────────────────────────────────
+
+function AddCustomItemModal({ isOpen, rates, sparePercent, onClose, onAdd }) {
+  const [genericName, setGenericName] = useState('');
+  const [itemCode, setItemCode] = useState('');
+  const [itemDescription, setItemDescription] = useState('');
+  const [material, setMaterial] = useState('');
+  const [length, setLength] = useState('');
+  const [quantity, setQuantity] = useState('');
+  const [designWeight, setDesignWeight] = useState('');
+  const [costPerPiece, setCostPerPiece] = useState('');
+
+  useEffect(() => {
+    if (isOpen) {
+      setGenericName('');
+      setItemCode('');
+      setItemDescription('');
+      setMaterial('');
+      setLength('');
+      setQuantity('');
+      setDesignWeight('');
+      setCostPerPiece('');
+    }
+  }, [isOpen]);
+
+  const canPreview = quantity && parseFloat(quantity) > 0 && length && parseFloat(length) > 0;
+
+  const preview = canPreview
+    ? calcItem({
+        material,
+        length,
+        quantity,
+        designWeight: parseFloat(designWeight) || 0,
+        costPerPiece: parseFloat(costPerPiece) || 0,
+        rateKgOverride: null,
+      }, rates, sparePercent)
+    : null;
+
+  const handleAdd = () => {
+    if (!genericName.trim()) { alert('Please enter an item name'); return; }
+    if (!length || parseFloat(length) <= 0) { alert('Please enter a valid length'); return; }
+    if (!quantity || parseFloat(quantity) <= 0) { alert('Please enter a valid quantity'); return; }
+
+    const newItem = calcItem({
+      id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+      profileId: null,
+      itemType: 'CUSTOM',
+      genericName: genericName.trim(),
+      itemCode: itemCode.trim(),
+      itemDescription: itemDescription.trim(),
+      material,
+      designWeight: parseFloat(designWeight) || 0,
+      costPerPiece: parseFloat(costPerPiece) || 0,
+      rateKgOverride: null,
+      uom: '',
+      profileImagePath: null,
+      length: parseFloat(length),
+      quantity: parseFloat(quantity),
+    }, rates, sparePercent);
+
+    onAdd(newItem);
+    onClose();
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-violet-500 to-purple-600 px-6 py-4 rounded-t-2xl">
+          <h2 className="text-lg font-bold text-white">Add Custom Item</h2>
+          <p className="text-violet-100 text-sm mt-0.5">Enter all details manually</p>
+        </div>
+
+        <div className="px-6 py-5 space-y-4">
+          {/* Item Name */}
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-1.5">
+              Item Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={genericName}
+              onChange={e => setGenericName(e.target.value)}
+              placeholder="e.g. Custom Bracket"
+              className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent text-sm"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            {/* Sunrack Code */}
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-1.5">Sunrack Code</label>
+              <input
+                type="text"
+                value={itemCode}
+                onChange={e => setItemCode(e.target.value)}
+                placeholder="e.g. SR-001"
+                className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent text-sm"
+              />
+            </div>
+
+            {/* Material */}
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-1.5">Material <span className="text-red-500">*</span></label>
+              <input
+                type="text"
+                value={material}
+                onChange={e => setMaterial(e.target.value)}
+                placeholder="e.g. SS 304"
+                className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent text-sm"
+              />
+            </div>
+          </div>
+
+          {/* Item Description */}
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-1.5">Item Description</label>
+            <input
+              type="text"
+              value={itemDescription}
+              onChange={e => setItemDescription(e.target.value)}
+              placeholder="e.g. Custom bracket for special mounting"
+              className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent text-sm"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            {/* Length */}
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-1.5">Length (mm) <span className="text-red-500">*</span></label>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={length}
+                onChange={e => setLength(e.target.value)}
+                placeholder="e.g. 6000"
+                className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent text-sm"
+              />
+            </div>
+
+            {/* Qty */}
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-1.5">Quantity <span className="text-red-500">*</span></label>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={quantity}
+                onChange={e => setQuantity(e.target.value)}
+                placeholder="e.g. 10"
+                className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent text-sm"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            {/* Wt/RM */}
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-1.5">Wt/RM (kg/m)</label>
+              <input
+                type="number"
+                min="0"
+                step="0.0001"
+                value={designWeight}
+                onChange={e => setDesignWeight(e.target.value)}
+                placeholder="e.g. 1.2345"
+                className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent text-sm"
+              />
+            </div>
+
+            {/* Rate/pc */}
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-1.5">Rate/Piece (₹)</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={costPerPiece}
+                onChange={e => setCostPerPiece(e.target.value)}
+                placeholder="e.g. 25.00"
+                className="w-full px-4 py-2.5 border-2 border-blue-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent text-sm bg-blue-50"
+              />
+            </div>
+          </div>
+
+          {/* Live preview */}
+          {preview && (
+            <div className="bg-violet-50 border-2 border-violet-200 rounded-xl px-4 py-3 grid grid-cols-5 gap-2 text-center">
+              <div>
+                <div className="text-xs text-gray-500 font-medium">Spare Qty</div>
+                <div className="font-bold text-gray-800">{preview.spareQty}</div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 font-medium">Final Qty</div>
+                <div className="font-bold text-gray-800">{preview.finalQty}</div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 font-medium">RM (m)</div>
+                <div className="font-bold text-gray-800">{preview.rm.toFixed(3)}</div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 font-medium">Wt (kg)</div>
+                <div className="font-bold text-gray-800">{preview.wt.toFixed(3)}</div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 font-medium">Cost (₹)</div>
+                <div className="font-bold text-violet-700">
+                  {preview.cost.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex gap-3 px-6 pb-5">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 py-2.5 border-2 border-gray-300 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleAdd}
+            className="flex-1 py-2.5 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl text-sm font-bold hover:from-violet-600 hover:to-purple-700 transition-all shadow-md"
+          >
+            Add Custom Item
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function CustomBOMPage() {
@@ -370,6 +609,7 @@ export default function CustomBOMPage() {
   const [buildings, setBuildings] = useState([]);
   const [activeBuilding, setActiveBuilding] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showAddCustomModal, setShowAddCustomModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
@@ -941,8 +1181,8 @@ export default function CustomBOMPage() {
             </table>
           </div>
 
-          {/* Add Item Button */}
-          <div className="p-4 border-t border-yellow-100">
+          {/* Add Item Buttons */}
+          <div className="p-4 border-t border-yellow-100 flex items-center gap-3">
             <button
               onClick={() => setShowAddModal(true)}
               className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-yellow-500 to-amber-500 text-white text-sm font-bold rounded-xl hover:from-yellow-600 hover:to-amber-600 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
@@ -950,7 +1190,16 @@ export default function CustomBOMPage() {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4"/>
               </svg>
-              Add Item
+              Add Item from DB
+            </button>
+            <button
+              onClick={() => setShowAddCustomModal(true)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-violet-500 to-purple-600 text-white text-sm font-bold rounded-xl hover:from-violet-600 hover:to-purple-700 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4"/>
+              </svg>
+              Add Custom Item
             </button>
           </div>
         </div>
@@ -963,6 +1212,15 @@ export default function CustomBOMPage() {
         rates={rates}
         sparePercent={sparePercent}
         onClose={() => setShowAddModal(false)}
+        onAdd={handleAddItem}
+      />
+
+      {/* Add Custom Item Modal */}
+      <AddCustomItemModal
+        isOpen={showAddCustomModal}
+        rates={rates}
+        sparePercent={sparePercent}
+        onClose={() => setShowAddCustomModal(false)}
         onAdd={handleAddItem}
       />
 
