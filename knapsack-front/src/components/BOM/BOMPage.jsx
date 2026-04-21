@@ -2323,14 +2323,13 @@ export default function BOMPage() {
 
 
   const handleDiscardChanges = async () => {
-    if (window.confirm('Are you sure you want to discard all unsaved changes? This will reload the BOM data.')) {
-      skipBeforeUnloadRef.current = true;
+    if (window.confirm('Are you sure you want to discard all unsaved changes?')) {
       changeTracker.stopTracking();
       setIsDirty(false);
       setHasRowOrderChanges(false);
-      setUserNotes([...originalUserNotes]); // Restore original notes
+      if (originalBomData) setBomData(originalBomData);
+      setUserNotes([...originalUserNotes]);
       setEditMode(false);
-      window.location.reload();
     }
   };
 
@@ -2384,6 +2383,7 @@ export default function BOMPage() {
 
     setIsDirty(false);
     setHasRowOrderChanges(false);
+    setOriginalBomData(bomData);
     setOriginalUserNotes([...userNotes]);
     return true;
   };
