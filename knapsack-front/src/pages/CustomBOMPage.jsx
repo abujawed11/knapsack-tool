@@ -1031,13 +1031,22 @@ export default function CustomBOMPage() {
 
                         {/* Material */}
                         <td className="border border-gray-200 px-2 py-2">
-                          <select
-                            value={item.material}
-                            onChange={e => handleEditItem(activeBuilding, item.id, 'material', e.target.value)}
-                            className="text-xs border border-gray-200 rounded px-1 py-1 focus:outline-none focus:ring-1 focus:ring-yellow-400 bg-white w-full"
-                          >
-                            {MATERIALS.map(m => <option key={m} value={m}>{m}</option>)}
-                          </select>
+                          {item.itemType === 'CUSTOM' ? (
+                            <input
+                              type="text"
+                              value={item.material}
+                              onChange={e => handleEditItem(activeBuilding, item.id, 'material', e.target.value)}
+                              className="text-xs border border-gray-200 rounded px-1 py-1 focus:outline-none focus:ring-1 focus:ring-violet-400 bg-white w-full"
+                            />
+                          ) : (
+                            <select
+                              value={item.material}
+                              onChange={e => handleEditItem(activeBuilding, item.id, 'material', e.target.value)}
+                              className="text-xs border border-gray-200 rounded px-1 py-1 focus:outline-none focus:ring-1 focus:ring-yellow-400 bg-white w-full"
+                            >
+                              {MATERIALS.map(m => <option key={m} value={m}>{m}</option>)}
+                            </select>
+                          )}
                         </td>
 
                         {/* Length */}
