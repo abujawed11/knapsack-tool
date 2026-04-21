@@ -317,7 +317,7 @@ export default function NotesSection({
                   </div>
                 ) : (
                   <>
-                    <span className="flex-1">{note.noteText}</span>
+                    <span className="flex-1 whitespace-pre-wrap">{note.noteText}</span>
                     {editMode && isManager && (
                       <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
@@ -448,7 +448,7 @@ export default function NotesSection({
                     </div>
                   ) : (
                     <>
-                      <span className="flex-1">{note.text}</span>
+                      <span className="flex-1 whitespace-pre-wrap">{note.text}</span>
                       {editMode && (
                         <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
