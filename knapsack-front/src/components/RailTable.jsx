@@ -95,6 +95,7 @@ function SortableRow({
             value={row.quantity ?? 0}
             onChange={(val) => updateRowQuantity(row.id, val)}
             minValue={0}
+            size="sm"
           />
         </div>
       </td>
@@ -104,6 +105,7 @@ function SortableRow({
             value={row.modules ?? 0}
             onChange={(val) => updateRowModules(row.id, val)}
             minValue={0}
+            size="sm"
           />
         </div>
       </td>
@@ -146,6 +148,7 @@ function SortableRow({
               value={sb1Value}
               onChange={(val) => updateRowSupportBase(row.id, 'supportBase1', val)}
               minValue={0}
+              size="sm"
             />
           </div>
         ) : (
@@ -159,6 +162,7 @@ function SortableRow({
               value={sb2Value}
               onChange={(val) => updateRowSupportBase(row.id, 'supportBase2', val)}
               minValue={0}
+              size="sm"
             />
           </div>
         ) : (
