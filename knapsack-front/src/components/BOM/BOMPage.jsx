@@ -1712,8 +1712,13 @@ export default function BOMPage() {
 
           setBomData(bomDataToSet);
 
-          const loadedAluminumRate = Number.parseFloat(data.bomData.aluminumRate);
-          if (Number.isFinite(loadedAluminumRate)) setAluminumRate(loadedAluminumRate);
+          // Only set these from bomData if NOT already restored from location.state.
+          // location.state carries the live values the user edited (e.g. rate changed 440→480)
+          // while bomData may still hold the stale embedded value.
+          if (!Number.isFinite(Number.parseFloat(location.state?.aluminumRate))) {
+            const loadedAluminumRate = Number.parseFloat(data.bomData.aluminumRate);
+            if (Number.isFinite(loadedAluminumRate)) setAluminumRate(loadedAluminumRate);
+          }
 
           const loadedHdgRate = Number.parseFloat(data.bomData.hdgRate);
           if (Number.isFinite(loadedHdgRate)) setHdgRate(loadedHdgRate);
@@ -1721,11 +1726,15 @@ export default function BOMPage() {
           const loadedMagnelisRate = Number.parseFloat(data.bomData.magnelisRate);
           if (Number.isFinite(loadedMagnelisRate)) setMagnelisRate(loadedMagnelisRate);
 
-          const loadedSparePercentage = Number.parseFloat(data.bomData.sparePercentage);
-          if (Number.isFinite(loadedSparePercentage)) setSparePercentage(loadedSparePercentage);
+          if (!Number.isFinite(Number.parseFloat(location.state?.sparePercentage))) {
+            const loadedSparePercentage = Number.parseFloat(data.bomData.sparePercentage);
+            if (Number.isFinite(loadedSparePercentage)) setSparePercentage(loadedSparePercentage);
+          }
 
-          const loadedModuleWp = Number.parseFloat(data.bomData.moduleWp);
-          if (Number.isFinite(loadedModuleWp)) setModuleWp(loadedModuleWp);
+          if (!Number.isFinite(Number.parseFloat(location.state?.moduleWp))) {
+            const loadedModuleWp = Number.parseFloat(data.bomData.moduleWp);
+            if (Number.isFinite(loadedModuleWp)) setModuleWp(loadedModuleWp);
+          }
 
           // Load userNotes from backend ONLY if not already loaded from location.state
           // (location.state has priority because it contains the most recent saved snapshot)
