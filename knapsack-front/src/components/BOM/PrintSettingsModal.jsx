@@ -6,7 +6,8 @@ export default function PrintSettingsModal({ isOpen, onClose, onPrint, bomData, 
     includeQuantity: true,
     includeSpare: true,
     includeCosting: true,
-    includeDisclaimer: false
+    includeNotes: false,
+    includeChangeLog: false
   });
 
   // Calculate orientation based on selections
@@ -132,17 +133,33 @@ export default function PrintSettingsModal({ isOpen, onClose, onPrint, bomData, 
                 </div>
               </label>
 
-              {/* Disclaimer/Changelog Section */}
+              {/* Disclaimer (Notes) Section */}
               <label className="flex items-start gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
                 <input
                   type="checkbox"
-                  checked={settings.includeDisclaimer}
-                  onChange={() => handleCheckboxChange('includeDisclaimer')}
+                  checked={settings.includeNotes}
+                  onChange={() => handleCheckboxChange('includeNotes')}
+                  className="mt-1 h-5 w-5 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"
+                />
+                <div className="flex-1">
+                  <div className="font-semibold text-gray-800">Disclaimer (Notes)</div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    Include default notes and user-added notes
+                  </div>
+                </div>
+              </label>
+
+              {/* Change Log Section */}
+              <label className="flex items-start gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+                <input
+                  type="checkbox"
+                  checked={settings.includeChangeLog}
+                  onChange={() => handleCheckboxChange('includeChangeLog')}
                   className="mt-1 h-5 w-5 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"
                 />
                 <div className="flex-1">
                   <div className="font-semibold text-gray-800">
-                    Disclaimer/Changelog
+                    Change Log
                     {changeLog && changeLog.length > 0 && (
                       <span className="ml-2 text-xs bg-orange-100 text-orange-800 px-2 py-0.5 rounded-full">
                         {changeLog.length} changes
