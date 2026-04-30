@@ -1,6 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+const DEFAULT_PRINT_SETTINGS = {
+  includeQuantity: true,
+  includeSpare: true,
+  includeCosting: true,
+  includeNotes: false,
+  includeChangeLog: false,
+};
+
 export default function WalkwayBOMPrintPreview() {
   const navigate = useNavigate();
   const [data, setData] = useState(null);
@@ -17,7 +25,8 @@ export default function WalkwayBOMPrintPreview() {
 
   if (!data) return null;
 
-  const { bom, settings, project } = data;
+  const { bom, settings, project, changeLog, printSettings: ps } = data;
+  const printSettings = { ...DEFAULT_PRINT_SETTINGS, ...(ps ?? {}) };
   const date = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 
   return (
@@ -79,45 +88,89 @@ export default function WalkwayBOMPrintPreview() {
 
         {/* ── Sections ── */}
         {bom.horizontal && (
-          <PrintSection title="SECTION A — HORIZONTAL WALKWAY" items={bom.horizontal} />
+          <PrintSection title="SECTION A — HORIZONTAL WALKWAY" items={bom.horizontal} printSettings={printSettings} />
         )}
 
         {bom.vertical && (
-          <PrintSection title="SECTION B — VERTICAL WALKWAY" items={bom.vertical} className={bom.horizontal ? 'mt-8' : ''} />
+          <PrintSection title="SECTION B — VERTICAL WALKWAY" items={bom.vertical} printSettings={printSettings} className={bom.horizontal ? 'mt-8' : ''} />
         )}
 
         {/* ── Grand totals ── */}
-        <div className="mt-8 border-t-2 border-gray-800 pt-4">
-          <table className="w-full text-sm">
-            <tbody>
-              <tr className="font-bold">
-                <td className="py-1.5 pr-4 text-gray-600">Total Project Cost</td>
-                <td className="py-1.5 font-black text-base">
-                  ₹{bom.summary.totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </td>
-              </tr>
-              <tr>
-                <td className="py-1 pr-4 text-gray-600">Total Walkway Length</td>
-                <td className="py-1 font-semibold">{bom.summary.totalLength.toFixed(1)} m</td>
-              </tr>
-              <tr>
-                <td className="py-1 pr-4 text-gray-600">Cost per Running Metre</td>
-                <td className="py-1 font-semibold">₹{bom.summary.costPerRM.toFixed(2)} / RM</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        {printSettings.includeCosting && (
+          <div className="mt-8 border-t-2 border-gray-800 pt-4">
+            <table className="w-full text-sm">
+              <tbody>
+                <tr className="font-bold">
+                  <td className="py-1.5 pr-4 text-gray-600">Total Project Cost</td>
+                  <td className="py-1.5 font-black text-base">
+                    ₹{bom.summary.totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="py-1 pr-4 text-gray-600">Total Walkway Length</td>
+                  <td className="py-1 font-semibold">{bom.summary.totalLength.toFixed(1)} m</td>
+                </tr>
+                <tr>
+                  <td className="py-1 pr-4 text-gray-600">Cost per Running Metre</td>
+                  <td className="py-1 font-semibold">₹{bom.summary.costPerRM.toFixed(2)} / RM</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {/* ── Notes ── */}
-        <div className="mt-8 border-t border-gray-200 pt-4">
-          <p className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-2">Notes</p>
-          <ul className="text-xs text-gray-600 space-y-1 list-disc list-inside">
-            <li>Recommended support spacing: <strong>1000 mm</strong> centre-to-centre.</li>
-            <li>Seam Clamps and Grub Screws are customer-supplied and are <strong>not included</strong> in this BOM.</li>
-            <li>Each walkway section = 2010 mm length × 310 mm width (Magnelis).</li>
-            <li>Spare quantity calculated at <strong>{settings?.sparePct ?? 0.1}%</strong> on all items (rounded up).</li>
-          </ul>
-        </div>
+        {printSettings.includeNotes && (
+          <div className="mt-8 border-t border-gray-200 pt-4">
+            <p className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-2">Notes</p>
+            <ul className="text-xs text-gray-600 space-y-1 list-disc list-inside">
+              <li>Recommended support spacing: <strong>1000 mm</strong> centre-to-centre.</li>
+              <li>Seam Clamps and Grub Screws are customer-supplied and are <strong>not included</strong> in this BOM.</li>
+              <li>Each walkway section = 2010 mm length × 310 mm width (Magnelis).</li>
+              <li>Spare quantity calculated at <strong>{settings?.sparePct ?? 0.1}%</strong> on all items (rounded up).</li>
+            </ul>
+          </div>
+        )}
+
+        {/* ── Change Log ── */}
+        {printSettings.includeChangeLog && changeLog?.length > 0 && (
+          <div className="mt-8 border-t border-gray-200 pt-4">
+            <p className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-2">
+              Change Log
+              <span className="ml-2 text-gray-400 font-normal normal-case">({changeLog.length} {changeLog.length === 1 ? 'entry' : 'entries'})</span>
+            </p>
+            <table className="w-full border-collapse text-xs">
+              <thead>
+                <tr className="bg-gray-800 text-white">
+                  <th className="px-3 py-2 text-left">Timestamp</th>
+                  <th className="px-3 py-2 text-left">Item</th>
+                  <th className="px-3 py-2 text-center">Section</th>
+                  <th className="px-3 py-2 text-center">Field</th>
+                  <th className="px-3 py-2 text-center">Old Value</th>
+                  <th className="px-3 py-2 text-center">New Value</th>
+                  <th className="px-3 py-2 text-left">Reason</th>
+                </tr>
+              </thead>
+              <tbody>
+                {changeLog.map((entry, i) => (
+                  <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                    <td className="px-3 py-1.5 border border-gray-200 whitespace-nowrap text-gray-500">
+                      {new Date(entry.timestamp).toLocaleString()}
+                    </td>
+                    <td className="px-3 py-1.5 border border-gray-200 font-medium text-gray-900">{entry.itemDescription}</td>
+                    <td className="px-3 py-1.5 border border-gray-200 text-center text-gray-600">
+                      {entry.section === 'horizontal' ? 'Sec A' : 'Sec B'}
+                    </td>
+                    <td className="px-3 py-1.5 border border-gray-200 text-center text-gray-600">{entry.field}</td>
+                    <td className="px-3 py-1.5 border border-gray-200 text-center text-red-500 font-medium">{entry.oldValue ?? '—'}</td>
+                    <td className="px-3 py-1.5 border border-gray-200 text-center text-green-600 font-bold">{entry.newValue ?? '—'}</td>
+                    <td className="px-3 py-1.5 border border-gray-200 text-gray-600 italic">"{entry.reason}"</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Print-specific styles */}
@@ -132,9 +185,19 @@ export default function WalkwayBOMPrintPreview() {
   );
 }
 
-function PrintSection({ title, items, className = '' }) {
+function PrintSection({ title, items, printSettings, className = '' }) {
+  const { includeQuantity, includeSpare, includeCosting } = printSettings;
+
   const sectionTotal = items.reduce((s, i) => s + (i.cost || 0), 0);
   const sectionWt    = items.reduce((s, i) => s + (i.totalWeight || 0), 0);
+
+  // Footer label colSpan = always cols (S.No, Desc, Material, UoM=4)
+  //   + 1 if qty + 2 if spare + 1 if costing (covers Wt/pc col)
+  const alwaysCols = 4; // S.No, Description, Material, UoM
+  const labelColSpan = alwaysCols
+    + (includeQuantity ? 1 : 0)
+    + (includeSpare ? 2 : 0)
+    + (includeCosting ? 1 : 0); // absorbs Wt/pc into label
 
   return (
     <div className={className}>
@@ -147,14 +210,14 @@ function PrintSection({ title, items, className = '' }) {
             <th className="px-3 py-2 text-left w-8">S.No</th>
             <th className="px-3 py-2 text-left">Description</th>
             <th className="px-3 py-2 text-center">Material</th>
-            <th className="px-3 py-2 text-center">Base Qty</th>
-            <th className="px-3 py-2 text-center">Spare</th>
-            <th className="px-3 py-2 text-center font-bold">Total Qty</th>
+            {includeQuantity && <th className="px-3 py-2 text-center">Base Qty</th>}
+            {includeSpare && <th className="px-3 py-2 text-center">Spare</th>}
+            {includeSpare && <th className="px-3 py-2 text-center font-bold">Total Qty</th>}
             <th className="px-3 py-2 text-center">UoM</th>
-            <th className="px-3 py-2 text-center">Wt/pc (kg)</th>
-            <th className="px-3 py-2 text-center">Total Wt</th>
-            <th className="px-3 py-2 text-center">Rate/pc (₹)</th>
-            <th className="px-3 py-2 text-center">Cost (₹)</th>
+            {includeCosting && <th className="px-3 py-2 text-center">Wt/pc (kg)</th>}
+            {includeCosting && <th className="px-3 py-2 text-center">Total Wt</th>}
+            {includeCosting && <th className="px-3 py-2 text-center">Rate/pc (₹)</th>}
+            {includeCosting && <th className="px-3 py-2 text-center">Cost (₹)</th>}
           </tr>
         </thead>
         <tbody>
@@ -163,33 +226,51 @@ function PrintSection({ title, items, className = '' }) {
               <td className="px-3 py-1.5 text-center text-gray-500 border border-gray-200">{i + 1}</td>
               <td className="px-3 py-1.5 font-medium text-gray-900 border border-gray-200">{item.description}</td>
               <td className="px-3 py-1.5 text-center text-gray-600 border border-gray-200">{item.material}</td>
-              <td className="px-3 py-1.5 text-center border border-gray-200">{item.baseQty.toLocaleString()}</td>
-              <td className="px-3 py-1.5 text-center text-gray-500 border border-gray-200">{item.spareQty}</td>
-              <td className="px-3 py-1.5 text-center font-bold border border-gray-200">{item.totalQty.toLocaleString()}</td>
+              {includeQuantity && (
+                <td className="px-3 py-1.5 text-center border border-gray-200">{item.baseQty.toLocaleString()}</td>
+              )}
+              {includeSpare && (
+                <td className="px-3 py-1.5 text-center text-gray-500 border border-gray-200">{item.spareQty}</td>
+              )}
+              {includeSpare && (
+                <td className="px-3 py-1.5 text-center font-bold border border-gray-200">{item.totalQty.toLocaleString()}</td>
+              )}
               <td className="px-3 py-1.5 text-center text-gray-500 border border-gray-200">Nos</td>
-              <td className="px-3 py-1.5 text-center border border-gray-200">
-                {item.wtPc != null ? item.wtPc.toFixed(4) : '—'}
-              </td>
-              <td className="px-3 py-1.5 text-center border border-gray-200">
-                {item.totalWeight != null && item.totalWeight > 0 ? item.totalWeight.toFixed(2) : '—'}
-              </td>
-              <td className="px-3 py-1.5 text-center border border-gray-200">
-                {item.ratePc != null ? item.ratePc.toFixed(2) : '—'}
-              </td>
-              <td className="px-3 py-1.5 text-center font-semibold border border-gray-200">
-                {item.cost != null ? item.cost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}
-              </td>
+              {includeCosting && (
+                <td className="px-3 py-1.5 text-center border border-gray-200">
+                  {item.wtPc != null ? item.wtPc.toFixed(4) : '—'}
+                </td>
+              )}
+              {includeCosting && (
+                <td className="px-3 py-1.5 text-center border border-gray-200">
+                  {item.totalWeight != null && item.totalWeight > 0 ? item.totalWeight.toFixed(2) : '—'}
+                </td>
+              )}
+              {includeCosting && (
+                <td className="px-3 py-1.5 text-center border border-gray-200">
+                  {item.ratePc != null ? item.ratePc.toFixed(2) : '—'}
+                </td>
+              )}
+              {includeCosting && (
+                <td className="px-3 py-1.5 text-center font-semibold border border-gray-200">
+                  {item.cost != null ? item.cost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
         <tfoot>
           <tr className="bg-gray-800 text-white font-bold">
-            <td colSpan={8} className="px-3 py-2 text-right">Section Total</td>
-            <td className="px-3 py-2 text-center">{sectionWt > 0 ? sectionWt.toFixed(2) : '—'}</td>
-            <td></td>
-            <td className="px-3 py-2 text-center">
-              {sectionTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </td>
+            <td colSpan={labelColSpan} className="px-3 py-2 text-right">Section Total</td>
+            {includeCosting && (
+              <td className="px-3 py-2 text-center">{sectionWt > 0 ? sectionWt.toFixed(2) : '—'}</td>
+            )}
+            {includeCosting && <td></td>}
+            {includeCosting && (
+              <td className="px-3 py-2 text-center">
+                {sectionTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </td>
+            )}
           </tr>
         </tfoot>
       </table>

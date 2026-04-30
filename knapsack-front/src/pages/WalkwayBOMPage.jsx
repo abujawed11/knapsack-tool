@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { projectAPI, walkwayAPI } from '../services/api';
 import { calculateWalkwayBOM } from '../lib/walkwayBomCalculations';
 import { DEFAULT_MAGNELIS_RATE_PER_KG, DEFAULT_ALUMINIUM_RATE_PER_KG } from '../constants/bomDefaults';
+import PrintSettingsModal from '../components/BOM/PrintSettingsModal';
 
 const WALKWAY_PROJECT_KEY = 'currentWalkwayProjectId';
 
@@ -425,6 +426,7 @@ export default function WalkwayBOMPage() {
   // Only auto-save after the user has actually changed something.
   // Prevents overwriting the old saved BOM on first render when creating fresh.
   const [isDirty, setIsDirty]           = useState(false);
+  const [showPrintModal, setShowPrintModal] = useState(false);
 
   // Snapshot of displayBom items at the moment edit mode was entered
   // Used as the reference "old value" for change tracking
@@ -627,8 +629,8 @@ export default function WalkwayBOMPage() {
     // Stay in edit mode
   };
 
-  const handlePrintPreview = () => {
-    sessionStorage.setItem('walkwayBomPrint', JSON.stringify({ bom: displayBom, settings, project }));
+  const handlePrintPreview = (printSettings) => {
+    sessionStorage.setItem('walkwayBomPrint', JSON.stringify({ bom: displayBom, settings, project, changeLog, printSettings }));
     navigate('/walkway-bom/print-preview');
   };
 
@@ -661,6 +663,13 @@ export default function WalkwayBOMPage() {
           onCancel={handleReviewCancel}
         />
       )}
+
+      <PrintSettingsModal
+        isOpen={showPrintModal}
+        onClose={() => setShowPrintModal(false)}
+        onPrint={(ps) => { handlePrintPreview(ps); setShowPrintModal(false); }}
+        changeLog={changeLog}
+      />
 
       {/* ── Header ── */}
       <header className="bg-white border-b-2 border-yellow-300 shadow-sm sticky top-0 z-40">
@@ -719,7 +728,7 @@ export default function WalkwayBOMPage() {
 
             {/* Print — gated: saved + not editing */}
             <button
-              onClick={handlePrintPreview}
+              onClick={() => setShowPrintModal(true)}
               disabled={!canPrint}
               title={editMode ? 'Finish editing before printing' : saveStatus !== 'saved' ? 'Waiting for save…' : ''}
               className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold border-2 rounded-xl transition-colors ${
