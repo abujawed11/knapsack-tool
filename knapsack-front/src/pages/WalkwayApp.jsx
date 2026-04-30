@@ -36,15 +36,17 @@ function makeRow() {
 export default function WalkwayApp() {
   const navigate = useNavigate();
 
-  const [project, setProject] = useState(null);
-  const [rows, setRows] = useState([makeRow()]);
+  const [project, setProject]       = useState(null);
+  const [rows, setRows]             = useState([makeRow()]);
   const [loadingRows, setLoadingRows] = useState(true);
-  const [saveStatus, setSaveStatus] = useState('saved'); // 'saved' | 'saving' | 'unsaved'
+  const [saveStatus, setSaveStatus] = useState('saved');
+  const [hasSavedBom, setHasSavedBom] = useState(false);
+  const [showWarning, setShowWarning] = useState(false);
 
   const saveTimerRef = useRef(null);
   const projectIdRef = useRef(null);
 
-  // Load project + rows on mount
+  // Load project + rows + check for saved BOM on mount
   useEffect(() => {
     const projectId = localStorage.getItem(WALKWAY_PROJECT_KEY);
     if (!projectId) {
@@ -67,6 +69,16 @@ export default function WalkwayApp() {
             length: r.length.toString(),
             qty: r.qty.toString()
           })));
+        }
+
+        // Check if a saved BOM already exists for this project
+        try {
+          const savedBom = await walkwayAPI.getBOM(projectId);
+          if (savedBom?.bomData?.moduleType === 'WALKWAY') {
+            setHasSavedBom(true);
+          }
+        } catch {
+          // No saved BOM — that's fine
         }
       } catch (err) {
         console.error('Failed to load walkway data:', err);
@@ -505,16 +517,36 @@ export default function WalkwayApp() {
           </div>
         )}
 
-        {/* Create BOM */}
-        <div className="flex justify-end">
+        {/* ── BOM action buttons ── */}
+        <div className="flex justify-end gap-4 flex-wrap">
+
+          {/* Show Last Saved BOM — only when one exists */}
+          {hasSavedBom && (
+            <button
+              onClick={() => navigate('/walkway-bom')}
+              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold rounded-xl shadow-sm transition-all duration-200 hover:shadow-md transform hover:-translate-y-0.5 text-sm"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Show Last Saved BOM
+            </button>
+          )}
+
+          {/* Create BOM / Create New BOM */}
           <button
             onClick={async () => {
-              if (saveTimerRef.current) {
-                clearTimeout(saveTimerRef.current);
-                saveTimerRef.current = null;
+              if (!hasAnyCalc) return;
+              if (hasSavedBom) {
+                setShowWarning(true);
+              } else {
+                if (saveTimerRef.current) {
+                  clearTimeout(saveTimerRef.current);
+                  saveTimerRef.current = null;
+                }
+                await syncRowsNow(rows);
+                navigate('/walkway-bom', { state: { resetBOM: true } });
               }
-              await syncRowsNow(rows);
-              navigate('/walkway-bom');
             }}
             disabled={!hasAnyCalc}
             className="flex items-center gap-2 px-6 py-3 bg-yellow-500 hover:bg-yellow-600 text-white font-bold rounded-xl shadow-sm transition-all duration-200 hover:shadow-md transform hover:-translate-y-0.5 text-sm disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
@@ -522,9 +554,60 @@ export default function WalkwayApp() {
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            Create BOM
+            {hasSavedBom ? 'Create New BOM' : 'Create BOM'}
           </button>
         </div>
+
+        {/* ── Override warning modal ── */}
+        {showWarning && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+            onClick={() => setShowWarning(false)}
+          >
+            <div
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="px-6 py-5 flex items-start gap-4">
+                <div className="shrink-0 w-12 h-12 rounded-full bg-yellow-100 flex items-center justify-center">
+                  <svg className="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg font-bold text-gray-900">Create New BOM?</h3>
+                  <p className="text-sm text-gray-600 mt-1">Do you want to create a new BOM?</p>
+                  <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">
+                    <strong>Warning:</strong> This will overwrite the previously saved BOM including all edits, rate overrides, and the change log.
+                  </div>
+                  <p className="text-sm text-gray-500 mt-3">Do you want to continue?</p>
+                </div>
+              </div>
+              <div className="px-6 pb-5 flex gap-3 justify-end border-t border-gray-100 pt-4">
+                <button
+                  onClick={() => setShowWarning(false)}
+                  className="px-5 py-2.5 text-sm font-semibold text-gray-600 border-2 border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    setShowWarning(false);
+                    if (saveTimerRef.current) {
+                      clearTimeout(saveTimerRef.current);
+                      saveTimerRef.current = null;
+                    }
+                    await syncRowsNow(rows);
+                    navigate('/walkway-bom', { state: { resetBOM: true } });
+                  }}
+                  className="px-6 py-2.5 text-sm font-bold bg-yellow-500 hover:bg-yellow-600 text-white rounded-xl transition-colors shadow-sm"
+                >
+                  OK, Create New
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

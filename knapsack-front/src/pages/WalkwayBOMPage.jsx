@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { projectAPI, walkwayAPI } from '../services/api';
 import { calculateWalkwayBOM } from '../lib/walkwayBomCalculations';
 import { DEFAULT_MAGNELIS_RATE_PER_KG, DEFAULT_ALUMINIUM_RATE_PER_KG } from '../constants/bomDefaults';
@@ -401,7 +401,10 @@ const DEFAULT_SETTINGS = {
 const EMPTY_OVERRIDES = { horizontal: {}, vertical: {} };
 
 export default function WalkwayBOMPage() {
-  const navigate = useNavigate();
+  const navigate  = useNavigate();
+  const location  = useLocation();
+  // When navigated with { state: { resetBOM: true } }, ignore any saved BOM data
+  const resetBOM  = location.state?.resetBOM === true;
 
   const [project, setProject]           = useState(null);
   const [rows, setRows]                 = useState([]);
@@ -415,6 +418,9 @@ export default function WalkwayBOMPage() {
   const [loading, setLoading]           = useState(true);
   const [saveStatus, setSaveStatus]     = useState('saved');
   const [error, setError]               = useState('');
+  // Only auto-save after the user has actually changed something.
+  // Prevents overwriting the old saved BOM on first render when creating fresh.
+  const [isDirty, setIsDirty]           = useState(false);
 
   // Snapshot of displayBom items at the moment edit mode was entered
   // Used as the reference "old value" for change tracking
@@ -435,15 +441,18 @@ export default function WalkwayBOMPage() {
         setProject(proj);
         setRows(savedRows ?? []);
 
-        try {
-          const saved = await walkwayAPI.getBOM(projectId);
-          if (saved?.bomData?.moduleType === 'WALKWAY' && saved.bomData.settings) {
-            setSettings(saved.bomData.settings);
-            if (saved.bomData.overrides)  setOverrides(saved.bomData.overrides);
-            if (saved.bomData.changeLog)  setChangeLog(saved.bomData.changeLog);
-            setBomActive(true);
-          }
-        } catch { /* no saved BOM yet */ }
+        // Skip restoring saved data when user explicitly chose "Create New BOM"
+        if (!resetBOM) {
+          try {
+            const saved = await walkwayAPI.getBOM(projectId);
+            if (saved?.bomData?.moduleType === 'WALKWAY' && saved.bomData.settings) {
+              setSettings(saved.bomData.settings);
+              if (saved.bomData.overrides)  setOverrides(saved.bomData.overrides);
+              if (saved.bomData.changeLog)  setChangeLog(saved.bomData.changeLog);
+              setBomActive(true);
+            }
+          } catch { /* no saved BOM yet */ }
+        }
       } catch (err) {
         setError('Failed to load project data.');
         console.error(err);
@@ -507,8 +516,14 @@ export default function WalkwayBOMPage() {
   }, []);
 
   useEffect(() => {
-    if (displayBom) scheduleSave(settings, displayBom, overrides, changeLog);
-  }, [displayBom, settings, overrides, changeLog, scheduleSave]);
+    if (displayBom && isDirty) scheduleSave(settings, displayBom, overrides, changeLog);
+  }, [displayBom, settings, overrides, changeLog, isDirty, scheduleSave]);
+
+  // ── Settings change (marks dirty so auto-save fires) ──
+  const handleSettingsChange = useCallback((next) => {
+    setSettings(next);
+    setIsDirty(true);
+  }, []);
 
   // ── Edit mode enter ──
   const handleEnterEditMode = () => {
@@ -523,6 +538,7 @@ export default function WalkwayBOMPage() {
 
   // ── Field change (tracks pending changes against snapshot) ──
   const handleItemChange = useCallback((section, index, field, value) => {
+    setIsDirty(true);
     // Update override
     setOverrides(prev => ({
       ...prev,
@@ -595,6 +611,7 @@ export default function WalkwayBOMPage() {
       timestamp: new Date().toISOString(),
     }));
     setChangeLog(prev => [...prev, ...newEntries]);
+    setIsDirty(true);
     setPendingChanges({});
     editSnapshotRef.current = null;
     setReviewModalOpen(false);
@@ -747,7 +764,7 @@ export default function WalkwayBOMPage() {
 
         {/* Settings panel */}
         {bomActive && (
-          <SettingsPanel settings={settings} onChange={setSettings} editMode={editMode} />
+          <SettingsPanel settings={settings} onChange={handleSettingsChange} editMode={editMode} />
         )}
 
         {/* BOM tables */}
