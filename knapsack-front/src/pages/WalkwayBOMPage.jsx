@@ -6,185 +6,90 @@ import { DEFAULT_MAGNELIS_RATE_PER_KG, DEFAULT_ALUMINIUM_RATE_PER_KG } from '../
 
 const WALKWAY_PROJECT_KEY = 'currentWalkwayProjectId';
 
-// ── First-time setup modal ────────────────────────────────────────────────────
+const FIELD_LABELS = {
+  baseQty:  'Base Qty',
+  spareQty: 'Spare Qty',
+  rateKg:   'Rate/kg (₹)',
+  ratePc:   'Rate/pc (₹)',
+};
 
-function FirstSetupModal({ onConfirm, onCancel }) {
-  const [magnelisRate, setMagnelisRate] = useState('');
-  const [alRate, setAlRate]             = useState('');
-  const [error, setError]               = useState('');
+// ── Settings Panel ────────────────────────────────────────────────────────────
 
-  const handleSubmit = () => {
-    if (!magnelisRate || parseFloat(magnelisRate) <= 0) {
-      setError('Please enter a valid Magnelis Rate.');
-      return;
-    }
-    if (!alRate || parseFloat(alRate) <= 0) {
-      setError('Please enter a valid Aluminium Rate.');
-      return;
-    }
-    setError('');
-    onConfirm({ magnelisRate: parseFloat(magnelisRate), alRate: parseFloat(alRate) });
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
-        <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 px-6 py-4">
-          <h2 className="text-lg font-bold text-white">Set Material Rates</h2>
-          <p className="text-yellow-100 text-sm mt-0.5">Required to calculate material costs</p>
-        </div>
-        <div className="px-6 py-5 space-y-4">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-              Magnelis Rate <span className="text-gray-400 font-normal">(INR / kg)</span>
-              <span className="ml-2 text-xs text-gray-400">— Walkway Section, Cleat, Jointer, Base Rail</span>
-            </label>
-            <input
-              type="number" min="0" step="0.01" autoFocus
-              value={magnelisRate}
-              onChange={e => setMagnelisRate(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-              placeholder="e.g. 180"
-              className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent text-sm font-medium"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-              Aluminium Rate <span className="text-gray-400 font-normal">(INR / kg)</span>
-              <span className="ml-2 text-xs text-gray-400">— Rail Nut (Al 6063-T6)</span>
-            </label>
-            <input
-              type="number" min="0" step="0.01"
-              value={alRate}
-              onChange={e => setAlRate(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-              placeholder="e.g. 220"
-              className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent text-sm font-medium"
-            />
-          </div>
-          {error && <p className="text-red-500 text-sm font-medium bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
-        </div>
-        <div className="px-6 pb-5 flex gap-3 justify-end">
-          <button
-            onClick={onCancel}
-            className="px-5 py-2.5 text-sm font-semibold text-gray-600 border-2 border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSubmit}
-            className="px-6 py-2.5 text-sm font-bold bg-yellow-500 text-white rounded-xl hover:bg-yellow-600 transition-colors shadow-sm"
-          >
-            Generate BOM
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Inline settings panel (live-editable) ────────────────────────────────────
-
-function SettingsPanel({ settings, onChange }) {
+function SettingsPanel({ settings, onChange, editMode }) {
   const { magnelisRate, alRate, sparePct, includeBlindRivets, includeSDS } = settings;
-
   const set = (key, value) => onChange({ ...settings, [key]: value });
-
   const fastenerError = !includeBlindRivets && !includeSDS;
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-6 py-4">
-      <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">BOM Settings — edit to update live</p>
+    <div className={`bg-white rounded-2xl border shadow-sm px-6 py-4 transition-colors ${editMode ? 'border-2 border-yellow-400' : 'border-gray-200'}`}>
+      <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">
+        BOM Settings — edit to update live
+        {editMode && <span className="ml-3 text-yellow-600 normal-case font-semibold">● Edit mode active</span>}
+      </p>
       <div className="flex flex-wrap gap-6 items-end">
-
-        {/* Magnelis Rate */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold text-gray-600">
-            Magnelis Rate <span className="text-gray-400 font-normal">(₹/kg)</span>
-          </label>
-          {/* <div className="text-xs text-gray-400 -mt-1">Section · Cleat · Jointer · Base Rail</div> */}
-          <input
-            type="number" min="0" step="0.01"
-            value={magnelisRate}
+          <label className="text-xs font-semibold text-gray-600">Magnelis Rate <span className="text-gray-400 font-normal">(₹/kg)</span></label>
+          <input type="number" min="0" step="0.01" value={magnelisRate}
             onChange={e => set('magnelisRate', parseFloat(e.target.value) || 0)}
             className="px-3 py-2 border-2 border-yellow-300 rounded-xl text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent w-36 bg-yellow-50"
           />
         </div>
-
-        {/* Aluminium Rate */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold text-gray-600">
-            Aluminium Rate <span className="text-gray-400 font-normal">(₹/kg)</span>
-          </label>
-          {/* <div className="text-xs text-gray-400 -mt-1">Rail Nut (Al 6063-T6)</div> */}
-          <input
-            type="number" min="0" step="0.01"
-            value={alRate}
+          <label className="text-xs font-semibold text-gray-600">Aluminium Rate <span className="text-gray-400 font-normal">(₹/kg)</span></label>
+          <input type="number" min="0" step="0.01" value={alRate}
             onChange={e => set('alRate', parseFloat(e.target.value) || 0)}
             className="px-3 py-2 border-2 border-blue-200 rounded-xl text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent w-36 bg-blue-50"
           />
         </div>
-
-        {/* Spare % */}
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-semibold text-gray-600">Spare %</label>
-          {/* <div className="text-xs text-gray-400 -mt-1">All items</div> */}
-          <input
-            type="number" min="0" step="0.1"
-            value={sparePct}
+          <input type="number" min="0" step="0.1" value={sparePct}
             onChange={e => set('sparePct', parseFloat(e.target.value) || 0)}
             className="px-3 py-2 border-2 border-gray-200 rounded-xl text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent w-24"
           />
         </div>
-
-        {/* Fasteners */}
         <div className="flex flex-col gap-1.5">
           <span className="text-xs font-semibold text-gray-600">Fasteners</span>
-          {/* <div className="text-xs text-gray-400 -mt-1">Fixed rate/pc — not weight-based</div> */}
           <div className="flex gap-3">
             <label className={`flex items-center gap-2 cursor-pointer select-none px-3 py-2 rounded-xl border-2 text-sm font-medium transition-colors ${includeBlindRivets ? 'border-blue-400 bg-blue-50 text-blue-800' : 'border-gray-200 text-gray-500'}`}>
-              <input
-                type="checkbox"
-                checked={includeBlindRivets}
-                onChange={e => set('includeBlindRivets', e.target.checked)}
-                className="w-3.5 h-3.5 accent-blue-500"
-              />
+              <input type="checkbox" checked={includeBlindRivets} onChange={e => set('includeBlindRivets', e.target.checked)} className="w-3.5 h-3.5 accent-blue-500" />
               Blind Rivets
             </label>
             <label className={`flex items-center gap-2 cursor-pointer select-none px-3 py-2 rounded-xl border-2 text-sm font-medium transition-colors ${includeSDS ? 'border-blue-400 bg-blue-50 text-blue-800' : 'border-gray-200 text-gray-500'}`}>
-              <input
-                type="checkbox"
-                checked={includeSDS}
-                onChange={e => set('includeSDS', e.target.checked)}
-                className="w-3.5 h-3.5 accent-blue-500"
-              />
+              <input type="checkbox" checked={includeSDS} onChange={e => set('includeSDS', e.target.checked)} className="w-3.5 h-3.5 accent-blue-500" />
               SDS Screws
             </label>
           </div>
-          {fastenerError && (
-            <p className="text-red-500 text-xs font-medium mt-0.5">Select at least one fastener.</p>
-          )}
+          {fastenerError && <p className="text-red-500 text-xs font-medium mt-0.5">Select at least one fastener.</p>}
         </div>
       </div>
     </div>
   );
 }
 
-// ── BOM Section Table ─────────────────────────────────────────────────────────
-// Column layout (14 cols total):
-//   Group 1 (5): S.No | Description | Material | UoM | Base Qty
-//   Sep (1):     grey spacer
-//   Group 2 (2): Spare | Total Qty
-//   Sep (1):     grey spacer
-//   Group 3 (5): Wt/pc | Total Wt | Rate/kg | Rate/pc | Cost
+// ── BOM Table ─────────────────────────────────────────────────────────────────
 
-const SEP = <td className="bg-gray-200 w-3 p-0" />;
-const SEP_H = (rowSpan) => (
-  <th rowSpan={rowSpan} className="bg-gray-200 w-3 p-0" />
-);
+const SEP   = <td className="bg-gray-200 w-3 p-0" />;
+const SEP_H = (rowSpan) => <th rowSpan={rowSpan} className="bg-gray-200 w-3 p-0" />;
 
-function BOMSectionTable({ title, items, accentColor = 'blue' }) {
-  const headerBg = accentColor === 'orange' ? 'bg-orange-600' : 'bg-blue-700';
+function EditInput({ value, index, field, sectionKey, sectionOverrides, onItemChange, isInt = false, step = 1 }) {
+  const hasOverride = sectionOverrides?.[index]?.[field] !== undefined;
+  return (
+    <input
+      type="number" min={0} step={step} value={value ?? ''}
+      onChange={e => {
+        const raw = isInt ? parseInt(e.target.value, 10) : parseFloat(e.target.value);
+        onItemChange(sectionKey, index, field, isNaN(raw) ? 0 : raw);
+      }}
+      className={`w-20 px-2 py-1 text-center text-xs font-semibold rounded-lg border focus:outline-none focus:ring-2 focus:ring-yellow-400 ${
+        hasOverride ? 'bg-yellow-50 border-yellow-400 text-yellow-900' : 'bg-gray-50 border-gray-300 text-gray-800'
+      }`}
+    />
+  );
+}
+
+function BOMSectionTable({ title, items, accentColor = 'blue', editMode = false, sectionKey, sectionOverrides = {}, onItemChange, onRowReset }) {
+  const headerBg  = accentColor === 'orange' ? 'bg-orange-600' : 'bg-blue-700';
   const totalCost = items.reduce((s, i) => s + (i.cost || 0), 0);
   const totalWt   = items.reduce((s, i) => s + (i.totalWeight || 0), 0);
 
@@ -196,25 +101,22 @@ function BOMSectionTable({ title, items, accentColor = 'blue' }) {
       <div className="overflow-x-auto">
         <table className="w-full text-sm border-collapse">
           <thead>
-            {/* ── Row 1: group labels ── */}
             <tr className="bg-gray-50 text-xs font-bold text-gray-500 uppercase tracking-wide border-b border-gray-200">
+              {editMode && <th rowSpan={2} className="px-3 py-2 text-center border-r border-gray-200 text-gray-400 w-12">Reset</th>}
               <th colSpan={5} className="px-4 py-2 text-left border-r border-gray-200">Item Details</th>
               {SEP_H(2)}
               <th colSpan={2} className="px-4 py-2 text-center border-r border-gray-200">Spare</th>
               {SEP_H(2)}
               <th colSpan={5} className="px-4 py-2 text-center">Weight &amp; Cost Calculation</th>
             </tr>
-            {/* ── Row 2: column labels ── */}
             <tr className="bg-gray-50 text-xs font-semibold text-gray-600 uppercase tracking-wide border-b-2 border-gray-300">
               <th className="px-4 py-3 text-left w-10">S.No</th>
               <th className="px-4 py-3 text-left">Description</th>
               <th className="px-4 py-3 text-center">Material</th>
               <th className="px-4 py-3 text-center">UoM</th>
               <th className="px-4 py-3 text-center border-r border-gray-200">Base Qty</th>
-              {/* sep */}
               <th className="px-4 py-3 text-center">Spare</th>
               <th className="px-4 py-3 text-center font-bold text-gray-800 border-r border-gray-200">Total Qty</th>
-              {/* sep */}
               <th className="px-4 py-3 text-center">Wt/pc (kg)</th>
               <th className="px-4 py-3 text-center">Total Wt (kg)</th>
               <th className="px-4 py-3 text-center">Rate/kg (₹)</th>
@@ -223,52 +125,73 @@ function BOMSectionTable({ title, items, accentColor = 'blue' }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {items.map((item, i) => (
-              <tr key={i} className="hover:bg-gray-50 transition-colors">
-                {/* Group 1 */}
-                <td className="px-4 py-3 text-gray-400 font-medium text-center">{i + 1}</td>
-                <td className="px-4 py-3 font-medium text-gray-900">{item.description}</td>
-                <td className="px-4 py-3 text-center text-gray-500 text-xs">{item.material}</td>
-                <td className="px-4 py-3 text-center text-gray-500">Nos</td>
-                <td className="px-4 py-3 text-center text-gray-700 border-r border-gray-200">{item.baseQty.toLocaleString()}</td>
-                {SEP}
-                {/* Group 2 */}
-                <td className="px-4 py-3 text-center text-gray-500">{item.spareQty}</td>
-                <td className="px-4 py-3 text-center font-bold text-gray-900 border-r border-gray-200">{item.totalQty.toLocaleString()}</td>
-                {SEP}
-                {/* Group 3 */}
-                <td className="px-4 py-3 text-center text-gray-600">
-                  {item.wtPc != null ? item.wtPc.toFixed(4) : '—'}
-                </td>
-                <td className="px-4 py-3 text-center text-gray-600">
-                  {item.totalWeight != null && item.totalWeight > 0 ? item.totalWeight.toFixed(2) : '—'}
-                </td>
-                <td className="px-4 py-3 text-center text-gray-600">
-                  {item.rateKg != null ? `₹${item.rateKg.toFixed(2)}` : '—'}
-                </td>
-                <td className="px-4 py-3 text-center text-gray-600">
-                  {item.ratePc != null ? `₹${item.ratePc.toFixed(2)}` : '—'}
-                </td>
-                <td className="px-4 py-3 text-center font-semibold text-gray-800">
-                  {item.cost != null ? `₹${item.cost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
-                </td>
-              </tr>
-            ))}
+            {items.map((item, i) => {
+              const hasRowOverride = !!sectionOverrides[i] && Object.keys(sectionOverrides[i]).length > 0;
+              const isWeightBased  = item.rateKg != null;
+              return (
+                <tr key={i} className={`transition-colors ${hasRowOverride && editMode ? 'bg-yellow-50/40' : 'hover:bg-gray-50'}`}>
+                  {editMode && (
+                    <td className="px-3 py-2 text-center border-r border-gray-100">
+                      {hasRowOverride && (
+                        <button onClick={() => onRowReset(sectionKey, i)} title="Reset row to auto-calculated values" className="text-gray-400 hover:text-red-500 transition-colors">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                        </button>
+                      )}
+                    </td>
+                  )}
+                  <td className="px-4 py-3 text-gray-400 font-medium text-center">{i + 1}</td>
+                  <td className="px-4 py-3 font-medium text-gray-900">{item.description}</td>
+                  <td className="px-4 py-3 text-center text-gray-500 text-xs">{item.material}</td>
+                  <td className="px-4 py-3 text-center text-gray-500">Nos</td>
+                  <td className="px-3 py-2 text-center border-r border-gray-200">
+                    {editMode
+                      ? <EditInput value={item.baseQty} index={i} field="baseQty" sectionKey={sectionKey} sectionOverrides={sectionOverrides} onItemChange={onItemChange} isInt />
+                      : <span className="text-gray-700">{item.baseQty.toLocaleString()}</span>}
+                  </td>
+                  {SEP}
+                  <td className="px-3 py-2 text-center">
+                    {editMode
+                      ? <EditInput value={item.spareQty} index={i} field="spareQty" sectionKey={sectionKey} sectionOverrides={sectionOverrides} onItemChange={onItemChange} isInt />
+                      : <span className="text-gray-500">{item.spareQty}</span>}
+                  </td>
+                  <td className="px-4 py-3 text-center font-bold text-gray-900 border-r border-gray-200">{item.totalQty.toLocaleString()}</td>
+                  {SEP}
+                  <td className="px-4 py-3 text-center text-gray-600">
+                    {item.wtPc != null ? item.wtPc.toFixed(4) : '—'}
+                  </td>
+                  <td className="px-4 py-3 text-center text-gray-600">
+                    {item.totalWeight != null && item.totalWeight > 0 ? item.totalWeight.toFixed(2) : '—'}
+                  </td>
+                  <td className="px-3 py-2 text-center text-gray-600">
+                    {editMode && isWeightBased
+                      ? <EditInput value={item.rateKg} index={i} field="rateKg" sectionKey={sectionKey} sectionOverrides={sectionOverrides} onItemChange={onItemChange} step={0.01} />
+                      : item.rateKg != null ? `₹${item.rateKg.toFixed(2)}` : '—'}
+                  </td>
+                  <td className="px-3 py-2 text-center text-gray-600">
+                    {editMode && !isWeightBased
+                      ? <EditInput value={item.ratePc} index={i} field="ratePc" sectionKey={sectionKey} sectionOverrides={sectionOverrides} onItemChange={onItemChange} step={0.01} />
+                      : item.ratePc != null ? `₹${item.ratePc.toFixed(2)}` : '—'}
+                  </td>
+                  <td className="px-4 py-3 text-center font-semibold text-gray-800">
+                    {item.cost != null ? `₹${item.cost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
           <tfoot>
             <tr className="bg-gray-900 text-white border-t-2 border-gray-600">
-              {/* Group 1 (5) + sep (1) + Group 2 (2) + sep (1) = 9 cols for label */}
+              {editMode && <td className="bg-gray-800 w-12 p-0" />}
               <td colSpan={5} className="px-4 py-3 text-right font-bold text-sm text-gray-300">Section Total</td>
               <td className="bg-gray-700 w-3 p-0" />
-              <td colSpan={2} className="px-4 py-3 text-center font-bold text-gray-300"></td>
+              <td colSpan={2} className="px-4 py-3"></td>
               <td className="bg-gray-700 w-3 p-0" />
-              {/* Group 3 */}
-              <td className="px-4 py-3 text-center text-gray-500"></td>
-              <td className="px-4 py-3 text-center font-bold text-yellow-300">
-                {totalWt > 0 ? totalWt.toFixed(2) : '—'}
-              </td>
-              <td className="px-4 py-3 text-center text-gray-500"></td>
-              <td className="px-4 py-3 text-center text-gray-500"></td>
+              <td className="px-4 py-3"></td>
+              <td className="px-4 py-3 text-center font-bold text-yellow-300">{totalWt > 0 ? totalWt.toFixed(2) : '—'}</td>
+              <td className="px-4 py-3"></td>
+              <td className="px-4 py-3"></td>
               <td className="px-4 py-3 text-center font-black text-yellow-400 text-base">
                 ₹{totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </td>
@@ -276,6 +199,191 @@ function BOMSectionTable({ title, items, accentColor = 'blue' }) {
           </tfoot>
         </table>
       </div>
+    </div>
+  );
+}
+
+// ── Override application ──────────────────────────────────────────────────────
+
+function applyOverridesToSection(items, sectionOvr) {
+  if (!items) return null;
+  return items.map((item, i) => {
+    const ov = sectionOvr?.[i];
+    if (!ov) return item;
+
+    const baseQty  = ov.baseQty  ?? item.baseQty;
+    const spareQty = ov.spareQty ?? item.spareQty;
+    const totalQty = baseQty + spareQty;
+    const wtPc     = ov.wtPc     ?? item.wtPc;
+    const rateKg   = ov.rateKg   !== undefined ? ov.rateKg   : item.rateKg;
+    const ratePc   = ov.ratePc   !== undefined ? ov.ratePc   : item.ratePc;
+
+    let totalWeight, cost;
+    if (rateKg != null && wtPc != null) {
+      totalWeight = parseFloat((totalQty * wtPc).toFixed(2));
+      cost        = parseFloat((totalWeight * rateKg).toFixed(2));
+    } else {
+      totalWeight = wtPc != null ? parseFloat((totalQty * wtPc).toFixed(2)) : null;
+      cost        = ratePc != null ? parseFloat((totalQty * ratePc).toFixed(2)) : null;
+    }
+
+    return { ...item, baseQty, spareQty, totalQty, wtPc, rateKg, ratePc, totalWeight, cost };
+  });
+}
+
+// ── Review Changes Modal ──────────────────────────────────────────────────────
+
+function ReviewChangesModal({ changes, onConfirm, onCancel }) {
+  const [reasons, setReasons] = useState({});
+
+  const isValid = changes.length > 0 && changes.every(c => reasons[c.id]?.trim().length > 0);
+
+  const handleConfirm = () => {
+    if (!isValid) return;
+    onConfirm(changes.map(c => ({ ...c, reason: reasons[c.id].trim() })));
+  };
+
+  const sectionLabel = (s) => s === 'horizontal' ? 'Section A — Horizontal' : 'Section B — Vertical';
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl mx-4 overflow-hidden max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="bg-yellow-500 px-6 py-4 shrink-0">
+          <h2 className="text-lg font-bold text-white">Review Changes</h2>
+          <p className="text-yellow-100 text-sm mt-0.5">
+            {changes.length} change{changes.length !== 1 ? 's' : ''} detected — provide a reason for each before confirming.
+          </p>
+        </div>
+
+        {/* Change list */}
+        <div className="overflow-y-auto flex-1 px-6 py-5 space-y-4">
+          {changes.map((c) => (
+            <div key={c.id} className="bg-gray-50 rounded-xl border border-gray-200 p-4 space-y-3">
+              <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+                <div>
+                  <span className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-0.5">Item</span>
+                  <span className="font-semibold text-gray-900">{c.itemDescription}</span>
+                </div>
+                <div>
+                  <span className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-0.5">Section</span>
+                  <span className="font-medium text-gray-700">{sectionLabel(c.section)}</span>
+                </div>
+                <div>
+                  <span className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-0.5">Field</span>
+                  <span className="font-medium text-gray-700">{FIELD_LABELS[c.field] ?? c.field}</span>
+                </div>
+                <div>
+                  <span className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-0.5">Change</span>
+                  <span className="text-red-500 font-medium">{c.oldValue ?? '—'}</span>
+                  <span className="mx-2 text-gray-400">→</span>
+                  <span className="text-green-600 font-bold">{c.newValue ?? '—'}</span>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1">
+                  Reason <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={reasons[c.id] ?? ''}
+                  onChange={e => setReasons(prev => ({ ...prev, [c.id]: e.target.value }))}
+                  placeholder="Enter reason for this change…"
+                  className="w-full px-3 py-2 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between shrink-0">
+          <p className="text-xs text-gray-400">
+            {Object.values(reasons).filter(r => r?.trim().length > 0).length} / {changes.length} reasons filled
+          </p>
+          <div className="flex gap-3">
+            <button
+              onClick={onCancel}
+              className="px-5 py-2.5 text-sm font-semibold text-gray-600 border-2 border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+            >
+              Back to Editing
+            </button>
+            <button
+              onClick={handleConfirm}
+              disabled={!isValid}
+              className={`px-6 py-2.5 text-sm font-bold rounded-xl transition-colors shadow-sm ${
+                isValid ? 'bg-yellow-500 text-white hover:bg-yellow-600' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+              }`}
+            >
+              Confirm &amp; Apply Changes
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Change Log Section ────────────────────────────────────────────────────────
+
+function ChangeLogSection({ changeLog }) {
+  const [expanded, setExpanded] = useState(false);
+  if (!changeLog.length) return null;
+
+  const sectionLabel = (s) => s === 'horizontal' ? 'Sec A' : 'Sec B';
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+      <button
+        onClick={() => setExpanded(e => !e)}
+        className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          </svg>
+          <span className="text-sm font-bold text-gray-700">Change Log</span>
+          <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs font-bold rounded-full">
+            {changeLog.length} {changeLog.length === 1 ? 'entry' : 'entries'}
+          </span>
+        </div>
+        <svg className={`w-4 h-4 text-gray-400 transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {expanded && (
+        <div className="border-t border-gray-200">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                <th className="px-4 py-3 text-left">Timestamp</th>
+                <th className="px-4 py-3 text-left">Item</th>
+                <th className="px-4 py-3 text-center">Section</th>
+                <th className="px-4 py-3 text-center">Field</th>
+                <th className="px-4 py-3 text-center">Old Value</th>
+                <th className="px-4 py-3 text-center">New Value</th>
+                <th className="px-4 py-3 text-left">Reason</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {[...changeLog].reverse().map((entry, i) => (
+                <tr key={i} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">
+                    {new Date(entry.timestamp).toLocaleString()}
+                  </td>
+                  <td className="px-4 py-3 font-medium text-gray-900 text-xs">{entry.itemDescription}</td>
+                  <td className="px-4 py-3 text-center text-xs text-gray-500">{sectionLabel(entry.section)}</td>
+                  <td className="px-4 py-3 text-center text-xs text-gray-600">{FIELD_LABELS[entry.field] ?? entry.field}</td>
+                  <td className="px-4 py-3 text-center text-red-500 font-medium text-xs">{entry.oldValue ?? '—'}</td>
+                  <td className="px-4 py-3 text-center text-green-600 font-bold text-xs">{entry.newValue ?? '—'}</td>
+                  <td className="px-4 py-3 text-gray-600 italic text-xs">"{entry.reason}"</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
@@ -290,21 +398,30 @@ const DEFAULT_SETTINGS = {
   includeSDS: true,
 };
 
+const EMPTY_OVERRIDES = { horizontal: {}, vertical: {} };
+
 export default function WalkwayBOMPage() {
   const navigate = useNavigate();
 
-  const [project, setProject]         = useState(null);
-  const [rows, setRows]               = useState([]);
-  const [settings, setSettings]       = useState(DEFAULT_SETTINGS);
-  const [bomActive, setBomActive]     = useState(true);
-  const [showModal, setShowModal]     = useState(false);
-  const [loading, setLoading]         = useState(true);
-  const [saveStatus, setSaveStatus]   = useState('saved'); // 'saved' | 'saving' | 'unsaved'
-  const [error, setError]             = useState('');
+  const [project, setProject]           = useState(null);
+  const [rows, setRows]                 = useState([]);
+  const [settings, setSettings]         = useState(DEFAULT_SETTINGS);
+  const [bomActive, setBomActive]       = useState(true);
+  const [overrides, setOverrides]       = useState(EMPTY_OVERRIDES);
+  const [changeLog, setChangeLog]       = useState([]);
+  const [editMode, setEditMode]         = useState(false);
+  const [pendingChanges, setPendingChanges] = useState({});
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [loading, setLoading]           = useState(true);
+  const [saveStatus, setSaveStatus]     = useState('saved');
+  const [error, setError]               = useState('');
 
-  const saveTimerRef = useRef(null);
+  // Snapshot of displayBom items at the moment edit mode was entered
+  // Used as the reference "old value" for change tracking
+  const editSnapshotRef = useRef(null);
+  const saveTimerRef    = useRef(null);
 
-  // Load project + rows + existing saved BOM on mount
+  // ── Load ──
   useEffect(() => {
     const projectId = localStorage.getItem(WALKWAY_PROJECT_KEY);
     if (!projectId) { navigate('/walkway/create'); return; }
@@ -318,16 +435,15 @@ export default function WalkwayBOMPage() {
         setProject(proj);
         setRows(savedRows ?? []);
 
-        // Restore previously saved BOM settings
         try {
           const saved = await walkwayAPI.getBOM(projectId);
           if (saved?.bomData?.moduleType === 'WALKWAY' && saved.bomData.settings) {
             setSettings(saved.bomData.settings);
+            if (saved.bomData.overrides)  setOverrides(saved.bomData.overrides);
+            if (saved.bomData.changeLog)  setChangeLog(saved.bomData.changeLog);
             setBomActive(true);
           }
-        } catch {
-          // No saved BOM yet
-        }
+        } catch { /* no saved BOM yet */ }
       } catch (err) {
         setError('Failed to load project data.');
         console.error(err);
@@ -339,16 +455,34 @@ export default function WalkwayBOMPage() {
     load();
   }, [navigate]);
 
-  // Derived BOM — recalculates whenever rows or settings change
+  // ── Base BOM ──
   const bom = useMemo(() => {
     if (!bomActive || settings.magnelisRate <= 0 || settings.alRate <= 0) return null;
-    const fastenerOk = settings.includeBlindRivets || settings.includeSDS;
-    if (!fastenerOk) return null;
+    if (!settings.includeBlindRivets && !settings.includeSDS) return null;
     return calculateWalkwayBOM(rows, settings);
   }, [rows, settings, bomActive]);
 
-  // Debounced save to DB whenever bom changes
-  const scheduleSave = useCallback((currentSettings, currentBom) => {
+  // ── Display BOM (overrides applied) ──
+  const displayBom = useMemo(() => {
+    if (!bom) return null;
+    const horizontal = applyOverridesToSection(bom.horizontal, overrides.horizontal);
+    const vertical   = applyOverridesToSection(bom.vertical,   overrides.vertical);
+    const allItems   = [...(horizontal ?? []), ...(vertical ?? [])];
+    const totalCost  = allItems.reduce((s, i) => s + (i.cost || 0), 0);
+    const costPerRM  = bom.summary.totalLength > 0 ? totalCost / bom.summary.totalLength : 0;
+    return {
+      horizontal,
+      vertical,
+      summary: {
+        ...bom.summary,
+        totalCost: parseFloat(totalCost.toFixed(2)),
+        costPerRM: parseFloat(costPerRM.toFixed(2)),
+      },
+    };
+  }, [bom, overrides]);
+
+  // ── Debounced save ──
+  const scheduleSave = useCallback((currentSettings, currentBom, currentOverrides, currentChangeLog) => {
     setSaveStatus('unsaved');
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(async () => {
@@ -360,6 +494,8 @@ export default function WalkwayBOMPage() {
           moduleType: 'WALKWAY',
           settings: currentSettings,
           bom: currentBom,
+          overrides: currentOverrides,
+          changeLog: currentChangeLog,
           generatedAt: new Date().toISOString(),
         });
         setSaveStatus('saved');
@@ -371,24 +507,113 @@ export default function WalkwayBOMPage() {
   }, []);
 
   useEffect(() => {
-    if (bom) scheduleSave(settings, bom);
-  }, [bom, settings, scheduleSave]);
+    if (displayBom) scheduleSave(settings, displayBom, overrides, changeLog);
+  }, [displayBom, settings, overrides, changeLog, scheduleSave]);
 
-  const handleFirstSetup = ({ magnelisRate, alRate }) => {
-    setShowModal(false);
-    setSettings(s => ({ ...s, magnelisRate, alRate }));
-    setBomActive(true);
+  // ── Edit mode enter ──
+  const handleEnterEditMode = () => {
+    // Snapshot current item values as the baseline for change tracking
+    editSnapshotRef.current = {
+      horizontal: displayBom?.horizontal ? [...displayBom.horizontal] : [],
+      vertical:   displayBom?.vertical   ? [...displayBom.vertical]   : [],
+    };
+    setPendingChanges({});
+    setEditMode(true);
   };
 
-  const handleSettingsChange = (next) => {
-    setSettings(next);
+  // ── Field change (tracks pending changes against snapshot) ──
+  const handleItemChange = useCallback((section, index, field, value) => {
+    // Update override
+    setOverrides(prev => ({
+      ...prev,
+      [section]: {
+        ...prev[section],
+        [index]: { ...(prev[section]?.[index] ?? {}), [field]: value },
+      },
+    }));
+
+    // Track change against snapshot
+    const changeId = `${section}-${index}-${field}`;
+    const snapshot  = editSnapshotRef.current;
+    const oldValue  = snapshot?.[section]?.[index]?.[field] ?? null;
+
+    setPendingChanges(prev => {
+      // If user reverted to original value, drop the tracking entry
+      if (value === oldValue) {
+        const next = { ...prev };
+        delete next[changeId];
+        return next;
+      }
+      return {
+        ...prev,
+        [changeId]: {
+          id: changeId,
+          section,
+          itemIndex: index,
+          itemDescription: snapshot?.[section]?.[index]?.description ?? `Row ${index + 1}`,
+          field,
+          oldValue: prev[changeId]?.oldValue ?? oldValue, // preserve original old on repeated edits
+          newValue: value,
+        },
+      };
+    });
+  }, []);
+
+  // ── Row reset ──
+  const handleRowReset = useCallback((section, index) => {
+    setOverrides(prev => {
+      const next = { ...prev[section] };
+      delete next[index];
+      return { ...prev, [section]: next };
+    });
+    // Clear pending changes for this row
+    setPendingChanges(prev => {
+      const next = { ...prev };
+      Object.keys(next).forEach(key => {
+        if (key.startsWith(`${section}-${index}-`)) delete next[key];
+      });
+      return next;
+    });
+  }, []);
+
+  // ── Done editing — open review modal if there are changes ──
+  const handleDoneEditing = () => {
+    const changes = Object.values(pendingChanges);
+    if (changes.length > 0) {
+      setReviewModalOpen(true);
+    } else {
+      // No changes — just exit
+      setEditMode(false);
+      editSnapshotRef.current = null;
+    }
+  };
+
+  // ── Review confirmed — append to changeLog ──
+  const handleReviewConfirm = (changesWithReasons) => {
+    const newEntries = changesWithReasons.map(c => ({
+      ...c,
+      timestamp: new Date().toISOString(),
+    }));
+    setChangeLog(prev => [...prev, ...newEntries]);
+    setPendingChanges({});
+    editSnapshotRef.current = null;
+    setReviewModalOpen(false);
+    setEditMode(false);
+  };
+
+  const handleReviewCancel = () => {
+    setReviewModalOpen(false);
+    // Stay in edit mode
   };
 
   const handlePrintPreview = () => {
-    sessionStorage.setItem('walkwayBomPrint', JSON.stringify({ bom, settings, project }));
+    sessionStorage.setItem('walkwayBomPrint', JSON.stringify({ bom: displayBom, settings, project }));
     navigate('/walkway-bom/print-preview');
   };
 
+  const canPrint = !!displayBom && saveStatus === 'saved' && !editMode;
+
+  // ── Loading ──
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -403,13 +628,16 @@ export default function WalkwayBOMPage() {
     );
   }
 
+  const pendingCount = Object.keys(pendingChanges).length;
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
 
-      {showModal && (
-        <FirstSetupModal
-          onConfirm={handleFirstSetup}
-          onCancel={() => navigate('/walkway-app')}
+      {reviewModalOpen && (
+        <ReviewChangesModal
+          changes={Object.values(pendingChanges)}
+          onConfirm={handleReviewConfirm}
+          onCancel={handleReviewCancel}
         />
       )}
 
@@ -426,9 +654,7 @@ export default function WalkwayBOMPage() {
 
           {project && (
             <div className="hidden md:flex items-center gap-3 text-sm text-gray-600 min-w-0">
-              <span className="px-3 py-1.5 bg-yellow-50 border border-yellow-200 rounded-lg font-medium truncate max-w-xs">
-                {project.name}
-              </span>
+              <span className="px-3 py-1.5 bg-yellow-50 border border-yellow-200 rounded-lg font-medium truncate max-w-xs">{project.name}</span>
               <span className="text-gray-400">|</span>
               <span className="shrink-0">Client: <strong className="text-gray-700">{project.clientName}</strong></span>
               <span className="text-gray-400">|</span>
@@ -438,17 +664,53 @@ export default function WalkwayBOMPage() {
 
           <div className="flex items-center gap-3 shrink-0">
             <SaveIndicator status={saveStatus} />
-            {bom && (
+
+            {/* Edit BOM */}
+            {displayBom && !editMode && (
               <button
-                onClick={handlePrintPreview}
+                onClick={handleEnterEditMode}
                 className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-gray-600 border-2 border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
-                Print / PDF
+                Edit BOM
               </button>
             )}
+
+            {/* Done Editing */}
+            {editMode && (
+              <button
+                onClick={handleDoneEditing}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-yellow-500 hover:bg-yellow-600 border-2 border-yellow-500 rounded-xl transition-colors shadow-sm"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                </svg>
+                Done Editing
+                {pendingCount > 0 && (
+                  <span className="ml-1 px-1.5 py-0.5 bg-white/30 text-white text-xs font-black rounded-full">
+                    {pendingCount}
+                  </span>
+                )}
+              </button>
+            )}
+
+            {/* Print — gated: saved + not editing */}
+            <button
+              onClick={handlePrintPreview}
+              disabled={!canPrint}
+              title={editMode ? 'Finish editing before printing' : saveStatus !== 'saved' ? 'Waiting for save…' : ''}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold border-2 rounded-xl transition-colors ${
+                canPrint ? 'text-gray-600 border-gray-200 hover:bg-gray-50' : 'text-gray-300 border-gray-100 cursor-not-allowed'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+              </svg>
+              Print / PDF
+            </button>
+
             <button
               onClick={() => navigate('/walkway-app')}
               className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-gray-600 border-2 border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
@@ -469,71 +731,65 @@ export default function WalkwayBOMPage() {
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">{error}</div>
         )}
 
-        {/* Empty state — Al Rate not set yet */}
-        {!bomActive && (
-          <div className="bg-white rounded-2xl border-2 border-dashed border-gray-200 py-20 flex flex-col items-center gap-4 text-center">
-            <div className="w-16 h-16 rounded-full bg-yellow-50 flex items-center justify-center">
-              <svg className="w-8 h-8 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-lg font-bold text-gray-700">Enter material rates to generate BOM</p>
-              <p className="text-sm text-gray-400 mt-1">Set Magnelis and Aluminium rates. All settings can be adjusted live after.</p>
-            </div>
-            <button
-              onClick={() => setShowModal(true)}
-              className="mt-2 px-6 py-3 bg-yellow-500 hover:bg-yellow-600 text-white font-bold rounded-xl shadow-sm transition-colors"
-            >
-              Set Rate & Generate
-            </button>
+        {/* Edit mode banner */}
+        {editMode && (
+          <div className="bg-yellow-50 border border-yellow-300 rounded-xl px-5 py-3 text-sm text-yellow-800 flex items-center gap-3">
+            <svg className="w-4 h-4 shrink-0 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>
+              <strong>Edit mode:</strong> Base Qty, Spare, and Rate fields are editable. Overridden cells are highlighted yellow.
+              Total Qty, Total Weight, and Cost recalculate automatically. Click <strong>Done Editing</strong> — you will be asked to provide a reason for each change before it is saved.
+              {pendingCount > 0 && <span className="ml-2 font-bold text-yellow-700">{pendingCount} unsaved change{pendingCount !== 1 ? 's' : ''}.</span>}
+            </span>
           </div>
         )}
 
-        {/* Live settings panel */}
+        {/* Settings panel */}
         {bomActive && (
-          <SettingsPanel settings={settings} onChange={handleSettingsChange} />
+          <SettingsPanel settings={settings} onChange={setSettings} editMode={editMode} />
         )}
 
         {/* BOM tables */}
-        {bom && (
+        {displayBom && (
           <>
-            {bom.horizontal && (
+            {displayBom.horizontal && (
               <BOMSectionTable
                 title="Section A — Horizontal Walkway"
-                items={bom.horizontal}
+                items={displayBom.horizontal}
                 accentColor="blue"
+                editMode={editMode}
+                sectionKey="horizontal"
+                sectionOverrides={overrides.horizontal}
+                onItemChange={handleItemChange}
+                onRowReset={handleRowReset}
               />
             )}
 
-            {bom.vertical && (
+            {displayBom.vertical && (
               <BOMSectionTable
                 title="Section B — Vertical Walkway"
-                items={bom.vertical}
+                items={displayBom.vertical}
                 accentColor="orange"
+                editMode={editMode}
+                sectionKey="vertical"
+                sectionOverrides={overrides.vertical}
+                onItemChange={handleItemChange}
+                onRowReset={handleRowReset}
               />
             )}
 
             {/* Grand totals */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <SummaryCard
-                label="Total Project Cost"
-                value={`₹${bom.summary.totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                color="yellow"
-              />
-              <SummaryCard
-                label="Total Walkway Length"
-                value={`${bom.summary.totalLength.toFixed(1)} m`}
-                color="blue"
-              />
-              <SummaryCard
-                label="Cost per Running Metre"
-                value={`₹${bom.summary.costPerRM.toFixed(2)} / RM`}
-                color="green"
-              />
+              <SummaryCard label="Total Project Cost" value={`₹${displayBom.summary.totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} color="yellow" />
+              <SummaryCard label="Total Walkway Length" value={`${displayBom.summary.totalLength.toFixed(1)} m`} color="blue" />
+              <SummaryCard label="Cost per Running Metre" value={`₹${displayBom.summary.costPerRM.toFixed(2)} / RM`} color="green" />
             </div>
 
-            {/* Recommendation note */}
+            {/* Change log */}
+            <ChangeLogSection changeLog={changeLog} />
+
+            {/* Note */}
             <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-3 text-sm text-amber-800 flex items-start gap-2">
               <svg className="w-4 h-4 mt-0.5 shrink-0 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
