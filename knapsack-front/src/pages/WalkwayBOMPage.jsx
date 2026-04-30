@@ -171,6 +171,17 @@ function SettingsPanel({ settings, onChange }) {
 }
 
 // ── BOM Section Table ─────────────────────────────────────────────────────────
+// Column layout (14 cols total):
+//   Group 1 (5): S.No | Description | Material | UoM | Base Qty
+//   Sep (1):     grey spacer
+//   Group 2 (2): Spare | Total Qty
+//   Sep (1):     grey spacer
+//   Group 3 (5): Wt/pc | Total Wt | Rate/kg | Rate/pc | Cost
+
+const SEP = <td className="bg-gray-200 w-3 p-0" />;
+const SEP_H = (rowSpan) => (
+  <th rowSpan={rowSpan} className="bg-gray-200 w-3 p-0" />
+);
 
 function BOMSectionTable({ title, items, accentColor = 'blue' }) {
   const headerBg = accentColor === 'orange' ? 'bg-orange-600' : 'bg-blue-700';
@@ -183,16 +194,27 @@ function BOMSectionTable({ title, items, accentColor = 'blue' }) {
         <h3 className="text-sm font-bold text-white tracking-wide uppercase">{title}</h3>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm border-collapse">
           <thead>
-            <tr className="bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-600 uppercase tracking-wide">
+            {/* ── Row 1: group labels ── */}
+            <tr className="bg-gray-50 text-xs font-bold text-gray-500 uppercase tracking-wide border-b border-gray-200">
+              <th colSpan={5} className="px-4 py-2 text-left border-r border-gray-200">Item Details</th>
+              {SEP_H(2)}
+              <th colSpan={2} className="px-4 py-2 text-center border-r border-gray-200">Spare</th>
+              {SEP_H(2)}
+              <th colSpan={5} className="px-4 py-2 text-center">Weight &amp; Cost Calculation</th>
+            </tr>
+            {/* ── Row 2: column labels ── */}
+            <tr className="bg-gray-50 text-xs font-semibold text-gray-600 uppercase tracking-wide border-b-2 border-gray-300">
               <th className="px-4 py-3 text-left w-10">S.No</th>
               <th className="px-4 py-3 text-left">Description</th>
               <th className="px-4 py-3 text-center">Material</th>
-              <th className="px-4 py-3 text-center">Base Qty</th>
-              <th className="px-4 py-3 text-center">Spare</th>
-              <th className="px-4 py-3 text-center font-bold text-gray-800">Total Qty</th>
               <th className="px-4 py-3 text-center">UoM</th>
+              <th className="px-4 py-3 text-center border-r border-gray-200">Base Qty</th>
+              {/* sep */}
+              <th className="px-4 py-3 text-center">Spare</th>
+              <th className="px-4 py-3 text-center font-bold text-gray-800 border-r border-gray-200">Total Qty</th>
+              {/* sep */}
               <th className="px-4 py-3 text-center">Wt/pc (kg)</th>
               <th className="px-4 py-3 text-center">Total Wt (kg)</th>
               <th className="px-4 py-3 text-center">Rate/kg (₹)</th>
@@ -203,13 +225,18 @@ function BOMSectionTable({ title, items, accentColor = 'blue' }) {
           <tbody className="divide-y divide-gray-100">
             {items.map((item, i) => (
               <tr key={i} className="hover:bg-gray-50 transition-colors">
+                {/* Group 1 */}
                 <td className="px-4 py-3 text-gray-400 font-medium text-center">{i + 1}</td>
                 <td className="px-4 py-3 font-medium text-gray-900">{item.description}</td>
                 <td className="px-4 py-3 text-center text-gray-500 text-xs">{item.material}</td>
-                <td className="px-4 py-3 text-center text-gray-700">{item.baseQty.toLocaleString()}</td>
-                <td className="px-4 py-3 text-center text-gray-500">{item.spareQty}</td>
-                <td className="px-4 py-3 text-center font-bold text-gray-900">{item.totalQty.toLocaleString()}</td>
                 <td className="px-4 py-3 text-center text-gray-500">Nos</td>
+                <td className="px-4 py-3 text-center text-gray-700 border-r border-gray-200">{item.baseQty.toLocaleString()}</td>
+                {SEP}
+                {/* Group 2 */}
+                <td className="px-4 py-3 text-center text-gray-500">{item.spareQty}</td>
+                <td className="px-4 py-3 text-center font-bold text-gray-900 border-r border-gray-200">{item.totalQty.toLocaleString()}</td>
+                {SEP}
+                {/* Group 3 */}
                 <td className="px-4 py-3 text-center text-gray-600">
                   {item.wtPc != null ? item.wtPc.toFixed(4) : '—'}
                 </td>
@@ -230,11 +257,18 @@ function BOMSectionTable({ title, items, accentColor = 'blue' }) {
           </tbody>
           <tfoot>
             <tr className="bg-gray-900 text-white border-t-2 border-gray-600">
-              <td colSpan={9} className="px-4 py-3 text-right font-bold text-sm text-gray-300">Section Total</td>
+              {/* Group 1 (5) + sep (1) + Group 2 (2) + sep (1) = 9 cols for label */}
+              <td colSpan={5} className="px-4 py-3 text-right font-bold text-sm text-gray-300">Section Total</td>
+              <td className="bg-gray-700 w-3 p-0" />
+              <td colSpan={2} className="px-4 py-3 text-center font-bold text-gray-300"></td>
+              <td className="bg-gray-700 w-3 p-0" />
+              {/* Group 3 */}
+              <td className="px-4 py-3 text-center text-gray-500"></td>
               <td className="px-4 py-3 text-center font-bold text-yellow-300">
                 {totalWt > 0 ? totalWt.toFixed(2) : '—'}
               </td>
-              <td></td>
+              <td className="px-4 py-3 text-center text-gray-500"></td>
+              <td className="px-4 py-3 text-center text-gray-500"></td>
               <td className="px-4 py-3 text-center font-black text-yellow-400 text-base">
                 ₹{totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </td>
