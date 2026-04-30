@@ -71,19 +71,15 @@ export default function WalkwayBOMPrintPreview() {
           </div>
 
           {/* Settings summary */}
-          {settings && (
+          {/* {settings && (
             <div className="mt-3 flex flex-wrap gap-4 text-xs text-gray-700 bg-gray-50 rounded-lg px-4 py-2 border border-gray-200">
-              <span>Magnelis Rate: <strong>₹{settings.magnelisRate}/kg</strong></span>
-              <span>|</span>
-              <span>Aluminium Rate: <strong>₹{settings.alRate}/kg</strong></span>
-              <span>|</span>
               <span>Spare: <strong>{settings.sparePct}%</strong></span>
               <span>|</span>
               <span>Fasteners: <strong>
                 {[settings.includeBlindRivets && 'Blind Rivets (4.8×15mm)', settings.includeSDS && 'SDS Screws'].filter(Boolean).join(' + ')}
               </strong></span>
             </div>
-          )}
+          )} */}
         </div>
 
         {/* ── Sections ── */}
@@ -216,7 +212,6 @@ function PrintSection({ title, items, printSettings, className = '' }) {
             <th className="px-3 py-2 text-center">UoM</th>
             {includeCosting && <th className="px-3 py-2 text-center">Wt/pc (kg)</th>}
             {includeCosting && <th className="px-3 py-2 text-center">Total Wt</th>}
-            {includeCosting && <th className="px-3 py-2 text-center">Rate/pc (₹)</th>}
             {includeCosting && <th className="px-3 py-2 text-center">Cost (₹)</th>}
           </tr>
         </thead>
@@ -247,11 +242,6 @@ function PrintSection({ title, items, printSettings, className = '' }) {
                 </td>
               )}
               {includeCosting && (
-                <td className="px-3 py-1.5 text-center border border-gray-200">
-                  {item.ratePc != null ? item.ratePc.toFixed(2) : '—'}
-                </td>
-              )}
-              {includeCosting && (
                 <td className="px-3 py-1.5 text-center font-semibold border border-gray-200">
                   {item.cost != null ? item.cost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}
                 </td>
@@ -265,7 +255,6 @@ function PrintSection({ title, items, printSettings, className = '' }) {
             {includeCosting && (
               <td className="px-3 py-2 text-center">{sectionWt > 0 ? sectionWt.toFixed(2) : '—'}</td>
             )}
-            {includeCosting && <td></td>}
             {includeCosting && (
               <td className="px-3 py-2 text-center">
                 {sectionTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

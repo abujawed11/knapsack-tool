@@ -104,7 +104,7 @@ function BOMSectionTable({ title, items, accentColor = 'blue', editMode = false,
           <thead>
             <tr className="bg-gray-50 text-xs font-bold text-gray-500 uppercase tracking-wide border-b border-gray-200">
               {editMode && <th rowSpan={2} className="px-3 py-2 text-center border-r border-gray-200 text-gray-400 w-12">Reset</th>}
-              <th colSpan={7} className="px-4 py-2 text-left border-r border-gray-200">Item Details</th>
+              <th colSpan={6} className="px-4 py-2 text-left border-r border-gray-200">Item Details</th>
               {SEP_H(2)}
               <th colSpan={2} className="px-4 py-2 text-center border-r border-gray-200">Spare</th>
               {SEP_H(2)}
@@ -189,7 +189,7 @@ function BOMSectionTable({ title, items, accentColor = 'blue', editMode = false,
           <tfoot>
             <tr className="bg-gray-900 text-white border-t-2 border-gray-600">
               {editMode && <td className="bg-gray-800 w-12 p-0" />}
-              <td colSpan={7} className="px-4 py-3 text-right font-bold text-sm text-gray-300">Section Total</td>
+              <td colSpan={6} className="px-4 py-3 text-right font-bold text-sm text-gray-300">Section Total</td>
               <td className="bg-gray-700 w-3 p-0" />
               <td colSpan={2} className="px-4 py-3"></td>
               <td className="bg-gray-700 w-3 p-0" />
