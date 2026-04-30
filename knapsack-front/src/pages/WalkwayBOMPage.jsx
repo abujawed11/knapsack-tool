@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { projectAPI, walkwayAPI } from '../services/api';
 import { calculateWalkwayBOM } from '../lib/walkwayBomCalculations';
+import { DEFAULT_MAGNELIS_RATE_PER_KG, DEFAULT_ALUMINIUM_RATE_PER_KG } from '../constants/bomDefaults';
 
 const WALKWAY_PROJECT_KEY = 'currentWalkwayProjectId';
 
@@ -248,8 +249,8 @@ function BOMSectionTable({ title, items, accentColor = 'blue' }) {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 const DEFAULT_SETTINGS = {
-  magnelisRate: 0,
-  alRate: 0,
+  magnelisRate: DEFAULT_MAGNELIS_RATE_PER_KG,
+  alRate: DEFAULT_ALUMINIUM_RATE_PER_KG,
   sparePct: 0.1,
   includeBlindRivets: true,
   includeSDS: true,
@@ -261,7 +262,7 @@ export default function WalkwayBOMPage() {
   const [project, setProject]         = useState(null);
   const [rows, setRows]               = useState([]);
   const [settings, setSettings]       = useState(DEFAULT_SETTINGS);
-  const [bomActive, setBomActive]     = useState(false);   // true once Al Rate has been set
+  const [bomActive, setBomActive]     = useState(true);
   const [showModal, setShowModal]     = useState(false);
   const [loading, setLoading]         = useState(true);
   const [saveStatus, setSaveStatus]   = useState('saved'); // 'saved' | 'saving' | 'unsaved'
