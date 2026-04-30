@@ -103,7 +103,7 @@ function BOMSectionTable({ title, items, accentColor = 'blue', editMode = false,
           <thead>
             <tr className="bg-gray-50 text-xs font-bold text-gray-500 uppercase tracking-wide border-b border-gray-200">
               {editMode && <th rowSpan={2} className="px-3 py-2 text-center border-r border-gray-200 text-gray-400 w-12">Reset</th>}
-              <th colSpan={5} className="px-4 py-2 text-left border-r border-gray-200">Item Details</th>
+              <th colSpan={7} className="px-4 py-2 text-left border-r border-gray-200">Item Details</th>
               {SEP_H(2)}
               <th colSpan={2} className="px-4 py-2 text-center border-r border-gray-200">Spare</th>
               {SEP_H(2)}
@@ -112,6 +112,8 @@ function BOMSectionTable({ title, items, accentColor = 'blue', editMode = false,
             <tr className="bg-gray-50 text-xs font-semibold text-gray-600 uppercase tracking-wide border-b-2 border-gray-300">
               <th className="px-4 py-3 text-left w-10">S.No</th>
               <th className="px-4 py-3 text-left">Description</th>
+              {/* <th className="px-4 py-3 text-left">Profile</th> */}
+              <th className="px-4 py-3 text-center">Cut Length (mm)</th>
               <th className="px-4 py-3 text-center">Material</th>
               <th className="px-4 py-3 text-center">UoM</th>
               <th className="px-4 py-3 text-center border-r border-gray-200">Base Qty</th>
@@ -143,6 +145,8 @@ function BOMSectionTable({ title, items, accentColor = 'blue', editMode = false,
                   )}
                   <td className="px-4 py-3 text-gray-400 font-medium text-center">{i + 1}</td>
                   <td className="px-4 py-3 font-medium text-gray-900">{item.description}</td>
+                  {/* <td className="px-4 py-3 text-center text-gray-400 text-xs">—</td> */}
+                  <td className="px-4 py-3 text-center text-gray-600 text-xs">{item.cutLength != null ? item.cutLength : '—'}</td>
                   <td className="px-4 py-3 text-center text-gray-500 text-xs">{item.material}</td>
                   <td className="px-4 py-3 text-center text-gray-500">Nos</td>
                   <td className="px-3 py-2 text-center border-r border-gray-200">
@@ -184,7 +188,7 @@ function BOMSectionTable({ title, items, accentColor = 'blue', editMode = false,
           <tfoot>
             <tr className="bg-gray-900 text-white border-t-2 border-gray-600">
               {editMode && <td className="bg-gray-800 w-12 p-0" />}
-              <td colSpan={5} className="px-4 py-3 text-right font-bold text-sm text-gray-300">Section Total</td>
+              <td colSpan={7} className="px-4 py-3 text-right font-bold text-sm text-gray-300">Section Total</td>
               <td className="bg-gray-700 w-3 p-0" />
               <td colSpan={2} className="px-4 py-3"></td>
               <td className="bg-gray-700 w-3 p-0" />
