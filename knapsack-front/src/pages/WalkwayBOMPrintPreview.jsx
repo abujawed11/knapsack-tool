@@ -171,10 +171,22 @@ export default function WalkwayBOMPrintPreview() {
 
       {/* Print-specific styles */}
       <style>{`
+        @page {
+          size: A4 portrait;
+          margin: 10mm 12mm;
+        }
         @media print {
+          html, body { margin: 0 !important; padding: 0 !important; }
           .no-print { display: none !important; }
-          .print-page { max-width: 100% !important; margin: 0 !important; padding: 12mm 14mm !important; }
+          .print-page {
+            max-width: 100% !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            font-size: 8.5px !important;
+          }
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          table { width: 100% !important; }
         }
       `}</style>
     </>
@@ -277,7 +289,6 @@ function PrintSection({ title, items, printSettings, className = '' }) {
         <tfoot>
           <tr className="bg-gray-800 text-white font-bold">
             <td colSpan={labelColSpan} className="px-3 py-2 text-right">Section Total</td>
-            {showSep2 && SEP_FOOT}
             {includeCosting && (
               <td className="px-3 py-2 text-center">{sectionWt > 0 ? sectionWt.toFixed(2) : '—'}</td>
             )}
