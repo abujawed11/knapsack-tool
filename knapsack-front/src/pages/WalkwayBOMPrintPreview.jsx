@@ -286,19 +286,17 @@ function PrintSection({ title, items, printSettings, className = '' }) {
             </tr>
           ))}
         </tbody>
-        <tfoot>
-          <tr className="bg-gray-800 text-white font-bold">
-            <td colSpan={labelColSpan} className="px-3 py-2 text-right">Section Total</td>
-            {includeCosting && (
+        {includeCosting && (
+          <tfoot>
+            <tr className="bg-gray-800 text-white font-bold">
+              <td colSpan={labelColSpan} className="px-3 py-2 text-right">Section Total</td>
               <td className="px-3 py-2 text-center">{sectionWt > 0 ? sectionWt.toFixed(2) : '—'}</td>
-            )}
-            {includeCosting && (
               <td className="px-3 py-2 text-center">
                 {sectionTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </td>
-            )}
-          </tr>
-        </tfoot>
+            </tr>
+          </tfoot>
+        )}
       </table>
     </div>
   );
