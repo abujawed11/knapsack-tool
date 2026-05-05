@@ -468,17 +468,14 @@ export default function WalkwayBOMPage() {
   const [pendingChanges, setPendingChanges] = useState({});
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [loading, setLoading]           = useState(true);
-  const [saveStatus, setSaveStatus]     = useState('saved');
+  const [saving, setSaving]             = useState(false);
+  const [saveMsg, setSaveMsg]           = useState('');
   const [error, setError]               = useState('');
-  // Only auto-save after the user has actually changed something.
-  // Prevents overwriting the old saved BOM on first render when creating fresh.
-  const [isDirty, setIsDirty]           = useState(false);
   const [showPrintModal, setShowPrintModal] = useState(false);
 
   // Snapshot of displayBom items at the moment edit mode was entered
   // Used as the reference "old value" for change tracking
   const editSnapshotRef = useRef(null);
-  const saveTimerRef    = useRef(null);
 
   // ── Load ──
   useEffect(() => {
@@ -545,39 +542,45 @@ export default function WalkwayBOMPage() {
     };
   }, [bom, overrides]);
 
-  // ── Debounced save ──
-  const scheduleSave = useCallback((currentSettings, currentBom, currentOverrides, currentChangeLog) => {
-    setSaveStatus('unsaved');
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(async () => {
-      const projectId = localStorage.getItem(WALKWAY_PROJECT_KEY);
-      if (!projectId) return;
-      setSaveStatus('saving');
-      try {
-        await walkwayAPI.saveBOM(projectId, {
-          moduleType: 'WALKWAY',
-          settings: currentSettings,
-          bom: currentBom,
-          overrides: currentOverrides,
-          changeLog: currentChangeLog,
-          generatedAt: new Date().toISOString(),
-        });
-        setSaveStatus('saved');
-      } catch (err) {
-        console.error('Failed to save BOM:', err);
-        setSaveStatus('unsaved');
-      }
-    }, 1500);
-  }, []);
+  // ── Manual save ──
+  const handleSave = async () => {
+    const projectId = localStorage.getItem(WALKWAY_PROJECT_KEY);
+    if (!projectId || !displayBom) return;
+    setSaving(true);
+    setSaveMsg('');
+    try {
+      await walkwayAPI.saveBOM(projectId, {
+        moduleType: 'WALKWAY',
+        settings,
+        bom: displayBom,
+        overrides,
+        changeLog,
+        generatedAt: new Date().toISOString(),
+      });
+      setSaveMsg('Saved!');
+      setTimeout(() => setSaveMsg(''), 2500);
+    } catch (err) {
+      console.error('Failed to save BOM:', err);
+      setSaveMsg('Save failed');
+    } finally {
+      setSaving(false);
+    }
+  };
 
-  useEffect(() => {
-    if (displayBom && isDirty) scheduleSave(settings, displayBom, overrides, changeLog);
-  }, [displayBom, settings, overrides, changeLog, isDirty, scheduleSave]);
+  // ── Reset all overrides back to auto-calculated defaults ──
+  const handleReset = () => {
+    if (!window.confirm('Reset all manual edits? This will revert all quantities, rates, and weights back to their calculated defaults. The change log will be cleared. This cannot be undone until you save.')) return;
+    setOverrides(EMPTY_OVERRIDES);
+    setChangeLog([]);
+    setPendingChanges({});
+    editSnapshotRef.current = null;
+    setEditMode(false);
+    setSaveMsg('');
+  };
 
-  // ── Settings change (marks dirty so auto-save fires) ──
+  // ── Settings change ──
   const handleSettingsChange = useCallback((next) => {
     setSettings(next);
-    setIsDirty(true);
   }, []);
 
   // ── Edit mode enter ──
@@ -593,7 +596,6 @@ export default function WalkwayBOMPage() {
 
   // ── Field change (tracks pending changes against snapshot) ──
   const handleItemChange = useCallback((section, index, field, value) => {
-    setIsDirty(true);
     // Update override
     setOverrides(prev => ({
       ...prev,
@@ -678,7 +680,6 @@ export default function WalkwayBOMPage() {
       timestamp: new Date().toISOString(),
     }));
     setChangeLog(prev => [...prev, ...newEntries]);
-    setIsDirty(true);
     setPendingChanges({});
     editSnapshotRef.current = null;
     setReviewModalOpen(false);
@@ -695,7 +696,7 @@ export default function WalkwayBOMPage() {
     navigate('/walkway-bom/print-preview');
   };
 
-  const canPrint = !!displayBom && saveStatus === 'saved' && !editMode;
+  const canPrint = !!displayBom && !editMode;
 
   // ── Loading ──
   if (loading) {
@@ -732,37 +733,26 @@ export default function WalkwayBOMPage() {
         changeLog={changeLog}
       />
 
-      {/* ── Header ── */}
-      <header className="bg-white border-b-2 border-yellow-300 shadow-sm sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4 min-w-0">
-            <img src="/white_back_photo.svg" alt="Logo" className="h-8 shrink-0" />
-            <div className="border-l border-gray-200 pl-4 min-w-0">
-              <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Walkway BOM</p>
-              <h1 className="text-base font-bold text-gray-900 truncate">Bill of Materials</h1>
-            </div>
-          </div>
+      {/* ── Navbar ── */}
+      <header className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between gap-4">
+          {/* Logo */}
+          <img src="/white_back_photo.svg" alt="Logo" className="h-7 shrink-0" />
 
-          {project && (
-            <div className="hidden md:flex items-center gap-3 text-sm text-gray-600 min-w-0">
-              <span className="px-3 py-1.5 bg-yellow-50 border border-yellow-200 rounded-lg font-medium truncate max-w-xs">{project.name}</span>
-              <span className="text-gray-400">|</span>
-              <span className="shrink-0">Client: <strong className="text-gray-700">{project.clientName}</strong></span>
-              <span className="text-gray-400">|</span>
-              <span className="shrink-0">ID: <strong className="text-gray-700">{project.projectId}</strong></span>
-            </div>
-          )}
+          {/* Action buttons */}
+          <div className="flex items-center gap-2 shrink-0">
 
-          <div className="flex items-center gap-3 shrink-0">
-            <SaveIndicator status={saveStatus} />
+            {saveMsg && (
+              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${saveMsg === 'Saved!' ? 'text-green-700 bg-green-100' : 'text-red-700 bg-red-100'}`}>
+                {saveMsg}
+              </span>
+            )}
 
             {/* Edit BOM */}
             {displayBom && !editMode && (
-              <button
-                onClick={handleEnterEditMode}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-gray-600 border-2 border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <button onClick={handleEnterEditMode}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
                 Edit BOM
@@ -771,42 +761,56 @@ export default function WalkwayBOMPage() {
 
             {/* Done Editing */}
             {editMode && (
-              <button
-                onClick={handleDoneEditing}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-yellow-500 hover:bg-yellow-600 border-2 border-yellow-500 rounded-xl transition-colors shadow-sm"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <button onClick={handleDoneEditing}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-bold text-white bg-yellow-500 hover:bg-yellow-600 rounded-lg transition-colors shadow-sm">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
                 </svg>
                 Done Editing
                 {pendingCount > 0 && (
-                  <span className="ml-1 px-1.5 py-0.5 bg-white/30 text-white text-xs font-black rounded-full">
-                    {pendingCount}
-                  </span>
+                  <span className="ml-0.5 px-1.5 py-0.5 bg-white/30 text-white text-xs font-black rounded-full">{pendingCount}</span>
                 )}
               </button>
             )}
 
-            {/* Print — gated: saved + not editing */}
-            <button
-              onClick={() => setShowPrintModal(true)}
-              disabled={!canPrint}
-              title={editMode ? 'Finish editing before printing' : saveStatus !== 'saved' ? 'Waiting for save…' : ''}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold border-2 rounded-xl transition-colors ${
-                canPrint ? 'text-gray-600 border-gray-200 hover:bg-gray-50' : 'text-gray-300 border-gray-100 cursor-not-allowed'
-              }`}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            {/* Reset */}
+            {displayBom && !editMode && (
+              <button onClick={handleReset}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
+                title="Revert all manual edits to auto-calculated defaults">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Reset
+              </button>
+            )}
+
+            {/* Save BOM */}
+            {displayBom && !editMode && (
+              <button onClick={handleSave} disabled={saving}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-bold text-white bg-gray-900 hover:bg-gray-700 rounded-lg transition-colors shadow-sm disabled:opacity-60">
+                {saving
+                  ? <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                  : <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+                }
+                {saving ? 'Saving...' : 'Save BOM'}
+              </button>
+            )}
+
+            {/* Print */}
+            <button onClick={() => setShowPrintModal(true)} disabled={!canPrint}
+              title={editMode ? 'Finish editing before printing' : ''}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold border rounded-lg transition-colors ${canPrint ? 'text-gray-600 border-gray-300 hover:bg-gray-50' : 'text-gray-300 border-gray-100 cursor-not-allowed'}`}>
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
               </svg>
               Print / PDF
             </button>
 
-            <button
-              onClick={() => navigate('/walkway-app')}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-gray-600 border-2 border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            {/* Back */}
+            <button onClick={() => navigate('/walkway-app')}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
               </svg>
               Back
@@ -814,6 +818,44 @@ export default function WalkwayBOMPage() {
           </div>
         </div>
       </header>
+
+      {/* ── Project Info Banner ── */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center gap-x-8 gap-y-1">
+          <div>
+            <p className="text-[10px] font-bold text-yellow-600 uppercase tracking-widest">Walkway BOM</p>
+            <h1 className="text-lg font-black text-gray-900 leading-tight">Bill of Materials</h1>
+          </div>
+          {project && (
+            <>
+              <div className="h-10 w-px bg-gray-200 hidden sm:block" />
+              <div>
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Project</p>
+                <p className="text-sm font-bold text-gray-800">{project.name}</p>
+              </div>
+              <div className="h-10 w-px bg-gray-200 hidden sm:block" />
+              <div>
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Client</p>
+                <p className="text-sm font-bold text-gray-800">{project.clientName}</p>
+              </div>
+              <div className="h-10 w-px bg-gray-200 hidden sm:block" />
+              <div>
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Project ID</p>
+                <p className="text-sm font-bold text-gray-800">{project.projectId}</p>
+              </div>
+              {project.walkwayVariation && (
+                <>
+                  <div className="h-10 w-px bg-gray-200 hidden sm:block" />
+                  <div>
+                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Variation</p>
+                    <p className="text-sm font-bold text-gray-800">{project.walkwayVariation}</p>
+                  </div>
+                </>
+              )}
+            </>
+          )}
+        </div>
+      </div>
 
       {/* ── Main ── */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 space-y-6">
@@ -897,32 +939,6 @@ export default function WalkwayBOMPage() {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function SaveIndicator({ status }) {
-  if (status === 'saving') return (
-    <span className="flex items-center gap-1.5 text-xs text-gray-500 font-medium">
-      <svg className="animate-spin w-3.5 h-3.5 text-yellow-500" fill="none" viewBox="0 0 24 24">
-        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-      </svg>
-      Saving...
-    </span>
-  );
-  if (status === 'unsaved') return (
-    <span className="flex items-center gap-1.5 text-xs text-amber-600 font-medium">
-      <span className="w-2 h-2 rounded-full bg-amber-400 inline-block"></span>
-      Unsaved
-    </span>
-  );
-  return (
-    <span className="flex items-center gap-1.5 text-xs text-green-600 font-medium">
-      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
-      </svg>
-      Saved
-    </span>
-  );
-}
 
 function SummaryCard({ label, value, color }) {
   const colors = {
