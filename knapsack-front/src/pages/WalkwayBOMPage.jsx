@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { projectAPI, walkwayAPI } from '../services/api';
+import { projectAPI, walkwayAPI, walkwayItemAPI } from '../services/api';
 import { calculateWalkwayBOM } from '../lib/walkwayBomCalculations';
 import { DEFAULT_MAGNELIS_RATE_PER_KG, DEFAULT_ALUMINIUM_RATE_PER_KG } from '../constants/bomDefaults';
 import PrintSettingsModal from '../components/BOM/PrintSettingsModal';
+import { useAuth } from '../context/AuthContext';
 
 const WALKWAY_PROJECT_KEY = 'currentWalkwayProjectId';
 
@@ -12,6 +13,7 @@ const FIELD_LABELS = {
   spareQty: 'Spare Qty',
   rateKg:   'Rate/kg (₹)',
   ratePc:   'Rate/pc (₹)',
+  wtPc:     'Wt/pc (kg)',
 };
 
 // ── Settings Panel ────────────────────────────────────────────────────────────
@@ -89,7 +91,7 @@ function EditInput({ value, index, field, sectionKey, sectionOverrides, onItemCh
   );
 }
 
-function BOMSectionTable({ title, items, accentColor = 'blue', editMode = false, sectionKey, sectionOverrides = {}, onItemChange, onRowReset }) {
+function BOMSectionTable({ title, items, accentColor = 'blue', editMode = false, sectionKey, sectionOverrides = {}, onItemChange, onRowReset, canEditWtPc = false }) {
   const headerBg  = accentColor === 'orange' ? 'bg-orange-600' : 'bg-blue-700';
   const totalCost = items.reduce((s, i) => s + (i.cost || 0), 0);
   const totalWt   = items.reduce((s, i) => s + (i.totalWeight || 0), 0);
@@ -163,8 +165,10 @@ function BOMSectionTable({ title, items, accentColor = 'blue', editMode = false,
                   </td>
                   <td className="px-4 py-3 text-center font-bold text-gray-900 border-r border-gray-200">{item.totalQty.toLocaleString()}</td>
                   {SEP}
-                  <td className="px-4 py-3 text-center text-gray-600">
-                    {item.wtPc != null ? item.wtPc.toFixed(4) : '—'}
+                  <td className={`px-4 py-3 text-center text-gray-600 ${editMode && canEditWtPc && item.wtPc != null && sectionOverrides[i]?.wtPc !== undefined ? 'bg-yellow-50' : ''}`}>
+                    {editMode && canEditWtPc && item.wtPc != null
+                      ? <EditInput value={sectionOverrides[i]?.wtPc ?? item.wtPc} index={i} field="wtPc" sectionKey={sectionKey} sectionOverrides={sectionOverrides} onItemChange={onItemChange} step={0.0001} />
+                      : (item.wtPc != null ? item.wtPc.toFixed(4) : '—')}
                   </td>
                   <td className="px-4 py-3 text-center text-gray-600">
                     {item.totalWeight != null && item.totalWeight > 0 ? item.totalWeight.toFixed(2) : '—'}
@@ -239,13 +243,14 @@ function applyOverridesToSection(items, sectionOvr) {
 // ── Review Changes Modal ──────────────────────────────────────────────────────
 
 function ReviewChangesModal({ changes, onConfirm, onCancel }) {
-  const [reasons, setReasons] = useState({});
+  const [reasons, setReasons]             = useState({});
+  const [applyToFuture, setApplyToFuture] = useState({});
 
   const isValid = changes.length > 0 && changes.every(c => reasons[c.id]?.trim().length > 0);
 
   const handleConfirm = () => {
     if (!isValid) return;
-    onConfirm(changes.map(c => ({ ...c, reason: reasons[c.id].trim() })));
+    onConfirm(changes.map(c => ({ ...c, reason: reasons[c.id].trim(), applyToFuture: !!applyToFuture[c.id] })));
   };
 
   const sectionLabel = (s) => s === 'horizontal' ? 'Section A — Horizontal' : 'Section B — Vertical';
@@ -297,6 +302,17 @@ function ReviewChangesModal({ changes, onConfirm, onCancel }) {
                   className="w-full px-3 py-2 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
                 />
               </div>
+              {c.field === 'wtPc' && c.masterItemId && (
+                <label className="flex items-center gap-2 cursor-pointer select-none text-sm text-gray-700 mt-1">
+                  <input
+                    type="checkbox"
+                    checked={!!applyToFuture[c.id]}
+                    onChange={e => setApplyToFuture(prev => ({ ...prev, [c.id]: e.target.checked }))}
+                    className="w-4 h-4 accent-yellow-500"
+                  />
+                  <span>Apply to Future — update master Wt/pc in database</span>
+                </label>
+              )}
             </div>
           ))}
         </div>
@@ -437,11 +453,13 @@ const EMPTY_OVERRIDES = { horizontal: {}, vertical: {} };
 export default function WalkwayBOMPage() {
   const navigate  = useNavigate();
   const location  = useLocation();
+  const { can }   = useAuth();
   // When navigated with { state: { resetBOM: true } }, ignore any saved BOM data
   const resetBOM  = location.state?.resetBOM === true;
 
-  const [project, setProject]           = useState(null);
-  const [rows, setRows]                 = useState([]);
+  const [project, setProject]                   = useState(null);
+  const [rows, setRows]                         = useState([]);
+  const [walkwayMasterItems, setWalkwayMasterItems] = useState([]);
   const [settings, setSettings]         = useState(DEFAULT_SETTINGS);
   const [bomActive, setBomActive]       = useState(true);
   const [overrides, setOverrides]       = useState(EMPTY_OVERRIDES);
@@ -469,12 +487,14 @@ export default function WalkwayBOMPage() {
 
     const load = async () => {
       try {
-        const [proj, savedRows] = await Promise.all([
+        const [proj, savedRows, masterItems] = await Promise.all([
           projectAPI.getById(projectId),
           walkwayAPI.getRows(projectId),
+          walkwayItemAPI.getAll(),
         ]);
         setProject(proj);
         setRows(savedRows ?? []);
+        setWalkwayMasterItems(masterItems ?? []);
 
         // Skip restoring saved data when user explicitly chose "Create New BOM"
         if (!resetBOM) {
@@ -503,8 +523,8 @@ export default function WalkwayBOMPage() {
   const bom = useMemo(() => {
     if (!bomActive || settings.magnelisRate <= 0 || settings.alRate <= 0) return null;
     if (!settings.includeBlindRivets && !settings.includeSDS) return null;
-    return calculateWalkwayBOM(rows, settings);
-  }, [rows, settings, bomActive]);
+    return calculateWalkwayBOM(rows, settings, walkwayMasterItems);
+  }, [rows, settings, bomActive, walkwayMasterItems]);
 
   // ── Display BOM (overrides applied) ──
   const displayBom = useMemo(() => {
@@ -602,6 +622,7 @@ export default function WalkwayBOMPage() {
           section,
           itemIndex: index,
           itemDescription: snapshot?.[section]?.[index]?.description ?? `Row ${index + 1}`,
+          masterItemId: snapshot?.[section]?.[index]?.masterItemId ?? null,
           field,
           oldValue: prev[changeId]?.oldValue ?? oldValue, // preserve original old on repeated edits
           newValue: value,
@@ -639,8 +660,19 @@ export default function WalkwayBOMPage() {
     }
   };
 
-  // ── Review confirmed — append to changeLog ──
-  const handleReviewConfirm = (changesWithReasons) => {
+  // ── Review confirmed — append to changeLog, optionally update master DB ──
+  const handleReviewConfirm = async (changesWithReasons) => {
+    const masterUpdates = changesWithReasons.filter(c => c.applyToFuture && c.field === 'wtPc' && c.masterItemId);
+    if (masterUpdates.length > 0) {
+      try {
+        await Promise.all(masterUpdates.map(c => walkwayItemAPI.update(c.masterItemId, { wtPc: c.newValue })));
+        const refreshed = await walkwayItemAPI.getAll();
+        setWalkwayMasterItems(refreshed ?? []);
+      } catch (err) {
+        console.error('Failed to update master Wt/pc:', err);
+      }
+    }
+
     const newEntries = changesWithReasons.map(c => ({
       ...c,
       timestamp: new Date().toISOString(),
@@ -822,6 +854,7 @@ export default function WalkwayBOMPage() {
                 sectionOverrides={overrides.horizontal}
                 onItemChange={handleItemChange}
                 onRowReset={handleRowReset}
+                canEditWtPc={can('canUpdateMasterItem')}
               />
             )}
 
@@ -835,6 +868,7 @@ export default function WalkwayBOMPage() {
                 sectionOverrides={overrides.vertical}
                 onItemChange={handleItemChange}
                 onRowReset={handleRowReset}
+                canEditWtPc={can('canUpdateMasterItem')}
               />
             )}
 

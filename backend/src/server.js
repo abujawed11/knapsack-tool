@@ -16,6 +16,7 @@ const savedBomRoutes = require('./routes/savedBomRoutes');
 const defaultNotesRoutes = require('./routes/defaultNotesRoutes');
 const templateRoutes = require('./routes/templateRoutes');
 const walkwayRoutes = require('./routes/walkwayRoutes');
+const walkwayItemRoutes = require('./routes/walkwayItemRoutes');
 const configRoutes = require('./routes/configRoutes');
 const customBomRoutes = require('./routes/customBomRoutes');
 
@@ -73,6 +74,7 @@ app.use('/api/saved-boms', savedBomRoutes);
 app.use('/api/default-notes', defaultNotesRoutes);
 app.use('/api/bom-templates', templateRoutes);
 app.use('/api/projects/:projectId/walkway-rows', walkwayRoutes);
+app.use('/api/walkway-items', walkwayItemRoutes);
 app.use('/api/config', configRoutes);
 app.use('/api/custom-bom', customBomRoutes);
 

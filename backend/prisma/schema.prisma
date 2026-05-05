@@ -35,6 +35,23 @@ model Project {
   @@map("projects")
 }
 
+// Walkway Master Items Table - Master weights and rates for walkway BOM components
+model WalkwayMasterItem {
+  id           Int      @id @default(autoincrement())
+  itemKey      String   @unique @map("item_key") @db.VarChar(50)
+  description  String   @db.VarChar(200)
+  profile      String?  @db.VarChar(200)
+  material     String?  @db.VarChar(100)
+  wtPc         Decimal? @map("wt_pc") @db.Decimal(10, 5)
+  fixedRatePc  Decimal? @map("fixed_rate_pc") @db.Decimal(10, 4)
+  cutLength    Int?     @map("cut_length")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("walkway_master_items")
+}
+
 // Walkway Rows Table - Stores individual walkway section rows within a walkway project
 model WalkwayRow {
   id        Int      @id @default(autoincrement())

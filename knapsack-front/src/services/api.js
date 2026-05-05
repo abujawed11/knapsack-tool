@@ -198,6 +198,17 @@ export const projectAPI = {
 // WALKWAY API
 // ====================
 
+export const walkwayItemAPI = {
+  getAll: async () => {
+    const response = await apiClient.get('/walkway-items');
+    return response.data;
+  },
+  update: async (id, data) => {
+    const response = await apiClient.put(`/walkway-items/${id}`, data);
+    return response.data;
+  },
+};
+
 export const walkwayAPI = {
   // Get all rows for a walkway project
   getRows: async (projectId) => {
