@@ -329,6 +329,30 @@ function ReviewChangesModal({ changes, onConfirm, onCancel }) {
   );
 }
 
+// ── Truncated Cell ────────────────────────────────────────────────────────────
+
+function TruncatedCell({ text, limit = 60, className = '' }) {
+  const [open, setOpen] = useState(false);
+  if (!text) return <span className={className}>—</span>;
+  const needsTrunc = text.length > limit;
+  return (
+    <span className={`inline-flex items-start gap-1 ${className}`}>
+      <span>{needsTrunc && !open ? text.slice(0, limit) + '…' : text}</span>
+      {needsTrunc && (
+        <button
+          onClick={() => setOpen(o => !o)}
+          className="flex-shrink-0 mt-0.5 text-gray-400 hover:text-gray-600 transition-colors"
+          title={open ? 'Collapse' : 'Expand'}
+        >
+          <svg className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+      )}
+    </span>
+  );
+}
+
 // ── Change Log Section ────────────────────────────────────────────────────────
 
 function ChangeLogSection({ changeLog }) {
@@ -362,27 +386,32 @@ function ChangeLogSection({ changeLog }) {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                <th className="px-4 py-3 text-left">Timestamp</th>
-                <th className="px-4 py-3 text-left">Item</th>
+                <th className="px-4 py-3 text-left w-20">Timestamp</th>
+                <th className="px-4 py-3 text-left w-40">Item</th>
                 <th className="px-4 py-3 text-center">Section</th>
                 <th className="px-4 py-3 text-center">Field</th>
                 <th className="px-4 py-3 text-center">Old Value</th>
                 <th className="px-4 py-3 text-center">New Value</th>
-                <th className="px-4 py-3 text-left">Reason</th>
+                <th className="px-4 py-3 text-left w-80">Reason</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {[...changeLog].reverse().map((entry, i) => (
                 <tr key={i} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">
-                    {new Date(entry.timestamp).toLocaleString()}
+                  <td className="px-4 py-3 text-xs text-gray-400 w-20">
+                    <span className="block">{new Date(entry.timestamp).toLocaleDateString()}</span>
+                    <span className="block text-gray-300">{new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
                   </td>
-                  <td className="px-4 py-3 font-medium text-gray-900 text-xs">{entry.itemDescription}</td>
+                  <td className="px-4 py-3 font-medium text-gray-900 text-xs w-40">
+                    <TruncatedCell text={entry.itemDescription} limit={40} />
+                  </td>
                   <td className="px-4 py-3 text-center text-xs text-gray-500">{sectionLabel(entry.section)}</td>
                   <td className="px-4 py-3 text-center text-xs text-gray-600">{FIELD_LABELS[entry.field] ?? entry.field}</td>
                   <td className="px-4 py-3 text-center text-red-500 font-medium text-xs">{entry.oldValue ?? '—'}</td>
                   <td className="px-4 py-3 text-center text-green-600 font-bold text-xs">{entry.newValue ?? '—'}</td>
-                  <td className="px-4 py-3 text-gray-600 italic text-xs">"{entry.reason}"</td>
+                  <td className="px-4 py-3 text-gray-600 italic text-xs w-80">
+                    "<TruncatedCell text={entry.reason} limit={80} />"
+                  </td>
                 </tr>
               ))}
             </tbody>
