@@ -2177,6 +2177,22 @@ export default function BOMPage() {
             rowNumber: item.sn,
             tabName: null,
           });
+        } else if (field === 'length') {
+          oldValue = originalItem.userEdits?.userProvidedStandardLength ?? originalItem.length ?? 0;
+          const newLength = value === '' ? 0 : Math.max(0, parseFloat(value) || 0);
+          updatedItem.length = newLength;
+          updatedItem.userEdits = { ...updatedItem.userEdits, userProvidedStandardLength: newLength };
+
+          changeTracker.trackChange({
+            id: `${item._id}-length`,
+            type: 'EDIT_LENGTH',
+            oldValue: oldValue,
+            newValue: newLength,
+            itemName: item.itemDescription,
+            rowNumber: item.sn,
+            tabName: null,
+          });
+
         } else if (field === 'material') {
           oldValue = originalItem.material;
           updatedItem.material = value;

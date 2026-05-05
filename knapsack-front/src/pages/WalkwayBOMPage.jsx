@@ -9,11 +9,12 @@ import { useAuth } from '../context/AuthContext';
 const WALKWAY_PROJECT_KEY = 'currentWalkwayProjectId';
 
 const FIELD_LABELS = {
-  baseQty:  'Base Qty',
-  spareQty: 'Spare Qty',
-  rateKg:   'Rate/kg (₹)',
-  ratePc:   'Rate/pc (₹)',
-  wtPc:     'Wt/pc (kg)',
+  baseQty:   'Base Qty',
+  spareQty:  'Spare Qty',
+  rateKg:    'Rate/kg (₹)',
+  ratePc:    'Rate/pc (₹)',
+  wtPc:      'Wt/pc (kg)',
+  cutLength: 'Cut Length (mm)',
 };
 
 // ── Settings Panel ────────────────────────────────────────────────────────────
@@ -149,7 +150,11 @@ function BOMSectionTable({ title, items, accentColor = 'blue', editMode = false,
                   <td className="px-4 py-3 text-gray-400 font-medium text-center">{i + 1}</td>
                   <td className="px-4 py-3 font-medium text-gray-900">{item.description}</td>
                   {/* <td className="px-4 py-3 text-center text-gray-400 text-xs">—</td> */}
-                  <td className="px-4 py-3 text-center text-gray-600 text-xs">{item.cutLength != null ? item.cutLength : '—'}</td>
+                  <td className="px-4 py-3 text-center text-gray-600 text-xs">
+                    {editMode && item.cutLength != null
+                      ? <EditInput value={sectionOverrides[i]?.cutLength ?? item.cutLength} index={i} field="cutLength" sectionKey={sectionKey} sectionOverrides={sectionOverrides} onItemChange={onItemChange} isInt step={1} />
+                      : (item.cutLength != null ? item.cutLength : '—')}
+                  </td>
                   <td className="px-4 py-3 text-center text-gray-500 text-xs">{item.material}</td>
                   <td className="px-4 py-3 text-center text-gray-500">Nos</td>
                   <td className="px-3 py-2 text-center border-r border-gray-200">
@@ -220,12 +225,13 @@ function applyOverridesToSection(items, sectionOvr) {
     const ov = sectionOvr?.[i];
     if (!ov) return item;
 
-    const baseQty  = ov.baseQty  ?? item.baseQty;
-    const spareQty = ov.spareQty ?? item.spareQty;
-    const totalQty = baseQty + spareQty;
-    const wtPc     = ov.wtPc     ?? item.wtPc;
-    const rateKg   = ov.rateKg   !== undefined ? ov.rateKg   : item.rateKg;
-    const ratePc   = ov.ratePc   !== undefined ? ov.ratePc   : item.ratePc;
+    const baseQty   = ov.baseQty   ?? item.baseQty;
+    const spareQty  = ov.spareQty  ?? item.spareQty;
+    const totalQty  = baseQty + spareQty;
+    const wtPc      = ov.wtPc      ?? item.wtPc;
+    const rateKg    = ov.rateKg    !== undefined ? ov.rateKg    : item.rateKg;
+    const ratePc    = ov.ratePc    !== undefined ? ov.ratePc    : item.ratePc;
+    const cutLength = ov.cutLength !== undefined ? ov.cutLength : item.cutLength;
 
     let totalWeight, cost;
     if (rateKg != null && wtPc != null) {
@@ -239,7 +245,7 @@ function applyOverridesToSection(items, sectionOvr) {
       cost        = ratePc != null ? parseFloat((totalQty * ratePc).toFixed(2)) : null;
     }
 
-    return { ...item, baseQty, spareQty, totalQty, wtPc, rateKg, ratePc, totalWeight, cost };
+    return { ...item, baseQty, spareQty, totalQty, wtPc, rateKg, ratePc, totalWeight, cost, cutLength };
   });
 }
 

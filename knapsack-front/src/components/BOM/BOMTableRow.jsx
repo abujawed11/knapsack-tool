@@ -251,8 +251,19 @@ const BOMTableRow = forwardRef(({ item, tabs, isEven, editMode, onProfileChange,
       </td>
 
       {/* Length */}
-      <td className={`border border-gray-400 px-2 py-2 text-sm text-center ${getCellBgColor()}`}>
-        {length || '-'}
+      <td className={`border border-gray-400 px-2 py-2 text-sm text-center ${userEdits?.userProvidedStandardLength != null ? 'bg-blue-100' : getCellBgColor()}`}>
+        {editMode ? (
+          <NumberInputWithSpinner
+            value={userEdits?.userProvidedStandardLength ?? length ?? 0}
+            onChange={(val) => handleInputChange('length', val)}
+            minValue={0}
+            step={1}
+            size="sm"
+            className={userEdits?.userProvidedStandardLength != null ? 'border-blue-400 bg-blue-50' : ''}
+          />
+        ) : (
+          length || '-'
+        )}
       </td>
 
       {/* UoM */}
