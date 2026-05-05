@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { projectAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { LongRailDropdown } from '../components/LongRailDropdown';
+import { WALKWAY_OPTIONS } from '../constants/walkwayVariation';
 
 const WALKWAY_PROJECT_KEY = 'currentWalkwayProjectId';
 
@@ -14,6 +16,7 @@ export default function CreateWalkwayProjectPage() {
   const [clientName, setClientName] = useState('');
   const [projectId, setProjectId] = useState('');
   const [projectName, setProjectName] = useState('');
+  const [walkwayVariation, setWalkwayVariation] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -76,12 +79,17 @@ export default function CreateWalkwayProjectPage() {
       setError('Client Name and Project ID are required.');
       return;
     }
+    if (!walkwayVariation) {
+      setError('Please select a Walkway Variation.');
+      return;
+    }
     setIsLoading(true);
     try {
       const project = await projectAPI.create({
         name: projectName.trim() || `${clientName.trim()} - ${projectId.trim()}`,
         clientName: clientName.trim(),
         projectId: projectId.trim(),
+        walkwayVariation,
         moduleType: 'WALKWAY',
         userId: user?.id
       });
@@ -205,6 +213,16 @@ export default function CreateWalkwayProjectPage() {
                       value={projectName} onChange={(e) => setProjectName(e.target.value)}
                       className="appearance-none block w-full px-4 py-3.5 bg-white border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all duration-300 hover:border-yellow-300 shadow-sm"
                       placeholder="Defaults to 'Client Name - Project ID'"
+                    />
+                  </div>
+
+                  <div className="group">
+                    <LongRailDropdown
+                      label="Walkway Variation"
+                      required
+                      value={walkwayVariation}
+                      onChange={(val) => setWalkwayVariation(val)}
+                      options={WALKWAY_OPTIONS}
                     />
                   </div>
                 </div>

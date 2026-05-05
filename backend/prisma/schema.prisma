@@ -17,6 +17,7 @@ model Project {
   clientName         String?  @map("client_name") @db.VarChar(255)
   projectId          String?  @map("project_id") @db.VarChar(100)
   longRailVariation  String?  @map("long_rail_variation") @db.VarChar(100)
+  walkwayVariation   String?  @map("walkway_variation") @db.VarChar(100)
   moduleType         String   @default("LONG_RAIL") @map("module_type") @db.VarChar(20)
   moduleWp           Decimal  @default(590) @map("module_wp") @db.Decimal(10, 2)
   createdAt          DateTime @default(now()) @map("created_at")
