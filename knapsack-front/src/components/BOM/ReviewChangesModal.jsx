@@ -86,6 +86,7 @@ export default function ReviewChangesModal({ isOpen, changes, defaultNotesChange
       'EDIT_PROFILE': 'Item Description',
       'EDIT_SPARE_QUANTITY': 'Spare Quantity',
       'EDIT_COST_PER_PIECE': 'Rate/Piece',
+      'EDIT_WT_PER_RM': 'Wt/Rm',
       'EDIT_ALUMINUM_RATE_OVERRIDE': 'Rate per Unit Wt',
       'EDIT_MATERIAL': 'Material',
       'EDIT_FASTENER_MATERIAL': 'Material',
@@ -95,7 +96,7 @@ export default function ReviewChangesModal({ isOpen, changes, defaultNotesChange
   };
 
   // Check if any change requires the "Update Master DB?" option
-  const hasUpdateMasterChanges = allChanges.some(change => change.type === 'EDIT_COST_PER_PIECE');
+  const hasUpdateMasterChanges = allChanges.some(change => change.type === 'EDIT_COST_PER_PIECE' || change.type === 'EDIT_WT_PER_RM');
 
   // Check if any change is a material edit
   const hasMaterialChanges = allChanges.some(change => change.type === 'EDIT_MATERIAL');
@@ -231,7 +232,7 @@ export default function ReviewChangesModal({ isOpen, changes, defaultNotesChange
                   </td>
                   {hasUpdateMasterChanges && canUpdateMaster && (
                     <td className="px-4 py-3 text-center">
-                      {change.type === 'EDIT_COST_PER_PIECE' &&  (
+                      {(change.type === 'EDIT_COST_PER_PIECE' || change.type === 'EDIT_WT_PER_RM') && (
                         <div className="flex flex-col items-center">
                           <input
                             type="checkbox"

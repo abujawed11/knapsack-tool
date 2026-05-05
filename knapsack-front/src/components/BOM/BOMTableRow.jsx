@@ -329,8 +329,22 @@ const BOMTableRow = forwardRef(({ item, tabs, isEven, editMode, onProfileChange,
       <td className="bg-gray-200"></td>
 
       {/* Wt/RM (Weight per Running Meter) */}
-      <td className={`border border-gray-400 px-3 py-2 text-sm text-center bg-yellow-50`}>
-        {formatNumber(wtPerRm, 2)}
+      <td className={`border border-gray-400 px-3 py-2 text-sm text-center ${userEdits?.userProvidedWtPerRm != null ? 'bg-blue-100' : 'bg-yellow-50'}`}>
+        {wtPerRm !== null && wtPerRm !== undefined ? (
+          (editMode && canEditField('perItemCost', 'bom')) ? (
+            <NumberInputWithSpinner
+              value={userEdits?.userProvidedWtPerRm ?? wtPerRm ?? 0}
+              onChange={(val) => handleInputChange('wtPerRm', val)}
+              minValue={0}
+              step={0.001}
+              size="sm"
+            />
+          ) : (
+            formatNumber(wtPerRm, 2)
+          )
+        ) : (
+          '-'
+        )}
       </td>
 
       {/* RM (Running Meters) */}

@@ -36,6 +36,9 @@ export default function ChangeLogDisplay({ changeLog }) {
       case 'CHANGE_MAGNELIS_RATE':
         return `Global Magnelis rate changed from ₹${change.oldValue} to ₹${change.newValue}.`;
 
+      case 'EDIT_WT_PER_RM':
+        return `Wt/Rm for "${change.itemName}" (Row ${change.rowNumber}) changed from ${change.oldValue} kg/m to ${change.newValue} kg/m.`;
+
       case 'EDIT_ALUMINUM_RATE_OVERRIDE':
         return `Aluminum rate for "${change.itemName}" (Row ${change.rowNumber}) changed from ₹${change.oldValue} to ₹${change.newValue}.`;
 

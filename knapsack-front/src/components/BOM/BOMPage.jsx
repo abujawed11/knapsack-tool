@@ -1907,7 +1907,9 @@ export default function BOMPage() {
     }
 
     const lengthToUse = parseFloat(item.length || item.userEdits?.userProvidedStandardLength || profile?.standardLength) || 0;
-    const designWeight = parseFloat(profile?.designWeight) || 0;
+    const designWeight = item.userEdits?.userProvidedWtPerRm != null
+      ? parseFloat(item.userEdits.userProvidedWtPerRm)
+      : parseFloat(profile?.designWeight) || 0;
 
     // Get rate: use manual override if set, otherwise use material-based rate
     const defaultRate = getDefaultRateByMaterial(item.material || profile?.material);
@@ -2095,6 +2097,31 @@ export default function BOMPage() {
             rowNumber: item.sn,
             tabName: null,
             profileSerialNumber: item.profileSerialNumber
+          });
+
+        } else if (field === 'wtPerRm') {
+          oldValue = originalItem.userEdits?.userProvidedWtPerRm ?? originalItem.wtPerRm ?? 0;
+          const newWt = value === '' ? 0 : Math.max(0, parseFloat(value) || 0);
+          updatedItem.userEdits = {
+            ...updatedItem.userEdits,
+            userProvidedWtPerRm: newWt,
+          };
+          // Recalculate wt and cost with new wtPerRm
+          const profileForWt = bomData.masterItems?.find(mi => mi.profileSerialNumber === updatedItem.profileSerialNumber) || {};
+          const weightCostWt = calculateWeightAndCost(updatedItem, profileForWt, aluminumRate);
+          updatedItem.wtPerRm = weightCostWt.wtPerRm;
+          updatedItem.wt = weightCostWt.wt;
+          updatedItem.cost = weightCostWt.cost;
+
+          changeTracker.trackChange({
+            id: `${item._id}-wt-per-rm`,
+            type: 'EDIT_WT_PER_RM',
+            oldValue: oldValue,
+            newValue: newWt,
+            itemName: item.itemDescription,
+            rowNumber: item.sn,
+            tabName: null,
+            profileSerialNumber: item.profileSerialNumber,
           });
 
         } else if (field === 'manualAluminumRate') {
@@ -2456,7 +2483,10 @@ export default function BOMPage() {
     if (masterUpdates.length > 0) {
       try {
         await Promise.all(masterUpdates.map(update => {
-          return bomAPI.updateMasterItem(update.profileSerialNumber, { costPerPiece: update.newValue });
+          const payload = update.type === 'EDIT_WT_PER_RM'
+            ? { designWeight: update.newValue }
+            : { costPerPiece: update.newValue };
+          return bomAPI.updateMasterItem(update.profileSerialNumber, payload);
         }));
         console.log('Updated master items:', masterUpdates.length);
       } catch (error) {
