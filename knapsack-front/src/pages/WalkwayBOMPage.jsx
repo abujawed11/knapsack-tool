@@ -179,8 +179,8 @@ function BOMSectionTable({ title, items, accentColor = 'blue', editMode = false,
                       : item.rateKg != null ? `₹${item.rateKg.toFixed(2)}` : '—'}
                   </td>
                   <td className="px-3 py-2 text-center text-gray-600">
-                    {editMode && !isWeightBased
-                      ? <EditInput value={item.ratePc} index={i} field="ratePc" sectionKey={sectionKey} sectionOverrides={sectionOverrides} onItemChange={onItemChange} step={0.01} />
+                    {editMode
+                      ? <EditInput value={sectionOverrides[i]?.ratePc ?? item.ratePc} index={i} field="ratePc" sectionKey={sectionKey} sectionOverrides={sectionOverrides} onItemChange={onItemChange} step={0.01} />
                       : item.ratePc != null ? `₹${item.ratePc.toFixed(2)}` : '—'}
                   </td>
                   <td className="px-4 py-3 text-center font-semibold text-gray-800">
@@ -230,7 +230,10 @@ function applyOverridesToSection(items, sectionOvr) {
     let totalWeight, cost;
     if (rateKg != null && wtPc != null) {
       totalWeight = parseFloat((totalQty * wtPc).toFixed(2));
-      cost        = parseFloat((totalWeight * rateKg).toFixed(2));
+      // If user directly overrode rate/pc, use it for cost; otherwise derive from weight × rate/kg
+      cost = ov.ratePc !== undefined
+        ? parseFloat((totalQty * ratePc).toFixed(2))
+        : parseFloat((totalWeight * rateKg).toFixed(2));
     } else {
       totalWeight = wtPc != null ? parseFloat((totalQty * wtPc).toFixed(2)) : null;
       cost        = ratePc != null ? parseFloat((totalQty * ratePc).toFixed(2)) : null;
