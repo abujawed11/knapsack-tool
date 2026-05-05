@@ -1005,82 +1005,95 @@ export default function HomePage() {
   }
 
   // Authenticated HomePage - BOM Creation Interface
-// BOM Module Configuration
-  const bomModules = [
+  const divisions = [
     {
-      id: 'custom-bom',
-      title: 'Custom BOM',
-      description: 'Create a fully custom Bill of Materials',
-      icon: (
-        <svg className="h-9 w-9" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-        </svg>
-      ),
-      available: true,
-      badge: 'Active',
-      badgeColor: 'bg-green-500',
-      onClick: handleCustomBom
+      label: 'Custom BOM',
+      modules: [
+        {
+          id: 'custom-bom',
+          title: 'Custom BOM',
+          description: 'Create a fully custom Bill of Materials',
+          icon: (
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+          ),
+          available: true,
+          badge: 'Active',
+          badgeColor: 'bg-green-500',
+          onClick: handleCustomBom,
+        },
+      ],
     },
     {
-      id: 'long-rail',
-      title: 'Long Rail',
-      description: 'Standard rail mounting optimization',
-      icon: (
-        <svg className="h-9 w-9" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-        </svg>
-      ),
-      available: true,
-      badge: 'Active',
-      badgeColor: 'bg-green-500',
-      onClick: handleLongRail
+      label: 'Long Rail',
+      modules: [
+        {
+          id: 'long-rail',
+          title: 'Long Rail',
+          description: 'Standard rail mounting optimization',
+          icon: (
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+          ),
+          available: true,
+          badge: 'Active',
+          badgeColor: 'bg-green-500',
+          onClick: handleLongRail,
+        },
+        {
+          id: 'hand-rail',
+          title: 'Hand Rail',
+          description: 'Safety rail system planning',
+          icon: (
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            </svg>
+          ),
+          available: false,
+          badge: 'Coming Soon',
+          badgeColor: 'bg-gray-400',
+        },
+      ],
     },
     {
-      id: 'hand-rail',
-      title: 'Hand Rail',
-      description: 'Safety rail system planning',
-      icon: (
-        <svg className="h-9 w-9" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-        </svg>
-      ),
-      available: false,
-      badge: 'Coming Soon',
-      badgeColor: 'bg-gray-400'
+      label: 'Walkway',
+      modules: [
+        {
+          id: 'walk-way',
+          title: 'WalkWay',
+          description: 'Maintenance pathway configuration',
+          icon: (
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+            </svg>
+          ),
+          available: true,
+          badge: 'Active',
+          badgeColor: 'bg-green-500',
+          onClick: handleWalkway,
+        },
+        {
+          id: 'future-module',
+          title: 'More Coming',
+          description: 'Additional modules in development',
+          icon: (
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+          ),
+          available: false,
+          badge: 'Planned',
+          badgeColor: 'bg-purple-400',
+        },
+      ],
     },
-    {
-      id: 'walk-way',
-      title: 'Walk Way',
-      description: 'Maintenance pathway configuration',
-      icon: (
-        <svg className="h-9 w-9" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-        </svg>
-      ),
-      available: true,
-      badge: 'Active',
-      badgeColor: 'bg-green-500',
-      onClick: handleWalkway
-    },
-    {
-      id: 'future-module',
-      title: 'More Coming',
-      description: 'Additional modules in development',
-      icon: (
-        <svg className="h-9 w-9" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-        </svg>
-      ),
-      available: false,
-      badge: 'Planned',
-      badgeColor: 'bg-purple-400'
-    }
   ];
 
-  // Authenticated HomePage - BOM Creation Interface
   return (
     <div className="min-h-screen bg-gradient-to-br from-yellow-300 via-yellow-100 to-white transition-colors duration-500">
-      {/* Header with enhanced styling */}
+      {/* Header */}
       <header className="bg-yellow-50/80 backdrop-blur-sm border-b-2 border-yellow-300 shadow-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto h-20 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
           <img
@@ -1133,100 +1146,71 @@ export default function HomePage() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto py-12 sm:py-16 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-6xl mx-auto">
-          {/* Title Section with animation */}
-          <div className="mb-12 pb-6 border-b-2 border-black">
-            <h1 className="text-4xl sm:text-5xl font-extrabold text-black tracking-tight mb-3">
+      <main className="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto">
+          {/* Title Section */}
+          <div className="mb-8 pb-4 border-b-2 border-black">
+            <h1 className="text-4xl sm:text-5xl font-extrabold text-black tracking-tight mb-2">
               Create BOM for:
             </h1>
-            <p className="text-gray-700 text-lg">Select a module to begin your Bill of Materials</p>
+            <p className="text-gray-700 text-base">Select a module to begin your Bill of Materials</p>
           </div>
 
-          {/* Cards Grid with stagger animation */}
-          <div className="grid grid-cols-1 gap-6 sm:gap-8 sm:grid-cols-2 lg:grid-cols-3">
-            {bomModules.map((module, index) => (
-              <div
-                key={module.id}
-                onClick={module.available ? module.onClick : undefined}
-                className={`relative rounded-2xl border-2 p-8 flex flex-col items-center text-center shadow-md transition-all duration-300 min-h-[280px] group
-                  ${module.available 
-                    ? 'border-black bg-white cursor-pointer hover:-translate-y-2 hover:shadow-2xl hover:shadow-yellow-400/30 hover:bg-yellow-50' 
-                    : 'border-gray-300 bg-white/70 backdrop-blur-sm'
-                  }`}
-                style={{
-                  animationDelay: `${index * 100}ms`,
-                  animation: 'fadeInUp 0.6s ease-out forwards',
-                  opacity: 0
-                }}
-                role={module.available ? "button" : "article"}
-                tabIndex={module.available ? 0 : -1}
-                aria-label={module.available ? `Open ${module.title} module` : `${module.title} - ${module.badge}`}
-              >
-                {/* Badge */}
-                <div className={`absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-bold text-white ${module.badgeColor} shadow-sm`}>
-                  {module.badge}
+          {/* Divisions */}
+          <div className="space-y-7">
+            {divisions.map((division) => (
+              <div key={division.label}>
+                {/* Division separator with label */}
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="text-xs font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">
+                    {division.label}
+                  </span>
+                  <div className="flex-1 h-px bg-gray-300" />
                 </div>
 
-                {/* Icon Container */}
-                <div className={`relative h-20 w-20 rounded-2xl flex items-center justify-center mb-6 transition-all duration-300
-                  ${module.available 
-                    ? 'bg-black text-yellow-400 group-hover:bg-yellow-400 group-hover:text-black group-hover:scale-110 group-hover:rotate-3' 
-                    : 'bg-gray-200 text-gray-400'
-                  }`}>
-                  {module.icon}
-                  
-                  {/* Pulse effect for active module */}
-                  {module.available && (
-                    <span className="absolute inset-0 rounded-2xl bg-yellow-400 animate-ping opacity-20"></span>
-                  )}
+                {/* Cards */}
+                <div className="flex flex-wrap gap-3">
+                  {division.modules.map((module) => (
+                    <div
+                      key={module.id}
+                      onClick={module.available ? module.onClick : undefined}
+                      className={`w-28 h-28 flex flex-col items-center justify-center rounded-xl border-2 p-3 transition-all duration-200 group
+                        ${module.available
+                          ? 'border-black bg-white cursor-pointer hover:-translate-y-1 hover:shadow-lg hover:shadow-yellow-400/30 hover:bg-yellow-50'
+                          : 'border-gray-200 bg-white/60'
+                        }`}
+                      role={module.available ? 'button' : 'article'}
+                      tabIndex={module.available ? 0 : -1}
+                      aria-label={module.available ? `Open ${module.title} module` : `${module.title} — ${module.badge}`}
+                    >
+                      {/* Icon */}
+                      <div className={`h-9 w-9 rounded-lg flex items-center justify-center mb-2 transition-all duration-200
+                        ${module.available
+                          ? 'bg-black text-yellow-400 group-hover:bg-yellow-400 group-hover:text-black group-hover:scale-110'
+                          : 'bg-gray-100 text-gray-400'
+                        }`}>
+                        {module.icon}
+                      </div>
+
+                      {/* Title */}
+                      <p className={`text-xs font-bold text-center leading-tight ${module.available ? 'text-black' : 'text-gray-400'}`}>
+                        {module.title}
+                      </p>
+                    </div>
+                  ))}
                 </div>
-
-                {/* Title */}
-                <h3 className={`text-2xl font-bold mb-2 ${module.available ? 'text-black' : 'text-gray-500'}`}>
-                  {module.title}
-                </h3>
-
-                {/* Description */}
-                <p className={`text-sm mb-6 ${module.available ? 'text-gray-600' : 'text-gray-400'}`}>
-                  {module.description}
-                </p>
-
-                {/* CTA for available modules */}
-                {module.available && (
-                  <div className="mt-auto pt-4 text-black font-bold flex items-center gap-2 group-hover:gap-3 transition-all">
-                    Open Module
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 group-hover:translate-x-1 transition-transform" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                )}
-
-                {/* Notification for unavailable modules */}
-                {!module.available && (
-                  <div className="mt-auto pt-4">
-                    <span className="inline-flex items-center gap-2 text-sm text-gray-500 font-medium">
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      In Development
-                    </span>
-                  </div>
-                )}
               </div>
             ))}
           </div>
 
           {/* Info Banner */}
-          <div className="mt-12 p-6 bg-black/90 backdrop-blur-sm rounded-2xl border-2 border-yellow-400 shadow-lg">
-            <div className="flex items-start gap-4">
-              <div className="flex-shrink-0">
-                <svg className="h-6 w-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
+          <div className="mt-10 p-5 bg-black/90 backdrop-blur-sm rounded-2xl border-2 border-yellow-400 shadow-lg">
+            <div className="flex items-start gap-3">
+              <svg className="h-5 w-5 text-yellow-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
               <div>
-                <h3 className="text-lg font-bold text-yellow-400 mb-1">Need Help?</h3>
+                <h3 className="text-sm font-bold text-yellow-400 mb-1">Need Help?</h3>
                 <p className="text-gray-300 text-sm leading-relaxed">
                   Select an active module to start creating your Bill of Materials. Each module is optimized for specific solar panel mounting structures.
                 </p>
@@ -1235,20 +1219,6 @@ export default function HomePage() {
           </div>
         </div>
       </main>
-
-      {/* Add keyframe animation */}
-      <style>{`
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
     </div>
   );
 
