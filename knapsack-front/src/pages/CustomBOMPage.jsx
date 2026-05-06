@@ -595,6 +595,223 @@ function AddCustomItemModal({ isOpen, rates, sparePercent, onClose, onAdd }) {
   );
 }
 
+// ── Edit Item Modal ───────────────────────────────────────────────────────────
+
+function EditItemModal({ isOpen, item, buildingId, rates, sparePercent, onClose, onSave }) {
+  const [genericName, setGenericName] = useState('');
+  const [itemCode, setItemCode] = useState('');
+  const [itemDescription, setItemDescription] = useState('');
+  const [material, setMaterial] = useState('');
+  const [uom, setUom] = useState('');
+  const [length, setLength] = useState('');
+  const [quantity, setQuantity] = useState('');
+  const [designWeight, setDesignWeight] = useState('');
+  const [costPerPiece, setCostPerPiece] = useState('');
+  const [rateKgOverride, setRateKgOverride] = useState('');
+
+  useEffect(() => {
+    if (isOpen && item) {
+      setGenericName(item.genericName || '');
+      setItemCode(item.itemCode || '');
+      setItemDescription(item.itemDescription || '');
+      setMaterial(item.material || '');
+      setUom(item.uom || '');
+      setLength(item.length != null ? String(item.length) : '');
+      setQuantity(item.quantity != null ? String(item.quantity) : '');
+      setDesignWeight(item.designWeight != null ? String(item.designWeight) : '');
+      setCostPerPiece(item.costPerPiece != null ? String(item.costPerPiece) : '');
+      setRateKgOverride(item.rateKgOverride != null ? String(item.rateKgOverride) : '');
+    }
+  }, [isOpen, item]);
+
+  const previewItem = item ? calcItem({
+    ...item,
+    genericName,
+    itemCode,
+    itemDescription,
+    material,
+    uom,
+    length: parseFloat(length) || 0,
+    quantity: parseFloat(quantity) || 0,
+    designWeight: parseFloat(designWeight) || 0,
+    costPerPiece: parseFloat(costPerPiece) || 0,
+    rateKgOverride: rateKgOverride !== '' ? parseFloat(rateKgOverride) : null,
+  }, rates, sparePercent) : null;
+
+  const handleSave = () => {
+    if (!genericName.trim()) { alert('Item name is required'); return; }
+    if (!quantity || parseFloat(quantity) <= 0) { alert('Please enter a valid quantity'); return; }
+
+    const updatedItem = calcItem({
+      ...item,
+      genericName: genericName.trim(),
+      itemCode: itemCode.trim(),
+      itemDescription: itemDescription.trim(),
+      material,
+      uom,
+      length: parseFloat(length) || 0,
+      quantity: parseFloat(quantity),
+      designWeight: parseFloat(designWeight) || 0,
+      costPerPiece: parseFloat(costPerPiece) || 0,
+      rateKgOverride: rateKgOverride !== '' ? parseFloat(rateKgOverride) : null,
+    }, rates, sparePercent);
+
+    onSave(buildingId, updatedItem);
+    onClose();
+  };
+
+  if (!isOpen || !item) return null;
+
+  const inputCls = 'w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent text-sm';
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-blue-500 to-indigo-600 px-6 py-4 rounded-t-2xl">
+          <h2 className="text-lg font-bold text-white">Edit Item</h2>
+          <p className="text-blue-100 text-sm mt-0.5">
+            {item.itemType === 'CUSTOM' ? 'Custom Item' : item.itemType === 'FASTENER' ? 'Fastener' : 'Profile'} — all fields editable
+          </p>
+        </div>
+
+        <div className="px-6 py-5 space-y-4">
+          {/* Item Name */}
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-1.5">Item Name <span className="text-red-500">*</span></label>
+            <input type="text" value={genericName} onChange={e => setGenericName(e.target.value)} className={inputCls} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            {/* Item Code */}
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-1.5">Sunrack Code</label>
+              <input type="text" value={itemCode} onChange={e => setItemCode(e.target.value)} className={inputCls} />
+            </div>
+            {/* UoM */}
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-1.5">UoM</label>
+              <input type="text" value={uom} onChange={e => setUom(e.target.value)} className={inputCls} />
+            </div>
+          </div>
+
+          {/* Item Description */}
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-1.5">Item Description</label>
+            <input type="text" value={itemDescription} onChange={e => setItemDescription(e.target.value)} className={inputCls} />
+          </div>
+
+          {/* Material */}
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-1.5">Material</label>
+            <input type="text" value={material} onChange={e => setMaterial(e.target.value)} placeholder="e.g. SS 304" className={inputCls} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            {/* Length */}
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-1.5">Length (mm)</label>
+              <input type="number" min="0" step="1" value={length} onChange={e => setLength(e.target.value)} className={inputCls} />
+            </div>
+            {/* Quantity */}
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-1.5">Quantity <span className="text-red-500">*</span></label>
+              <input type="number" min="0" step="1" value={quantity} onChange={e => setQuantity(e.target.value)} className={inputCls} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            {/* Design Weight */}
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-1.5">Wt/RM (kg/m)</label>
+              <input type="number" min="0" step="0.0001" value={designWeight} onChange={e => setDesignWeight(e.target.value)} className={inputCls} />
+            </div>
+            {/* Cost Per Piece */}
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-1.5">Rate/Piece (₹)</label>
+              <input type="number" min="0" step="0.01" value={costPerPiece} onChange={e => setCostPerPiece(e.target.value)} className={`${inputCls} border-blue-200 bg-blue-50`} />
+            </div>
+          </div>
+
+          {/* Rate/kg Override */}
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-1.5">
+              Rate/kg Override (₹)
+              <span className="ml-2 text-xs font-normal text-gray-400">— leave blank to use global rate</span>
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={rateKgOverride}
+                onChange={e => setRateKgOverride(e.target.value)}
+                placeholder="Leave blank for global rate"
+                className={inputCls}
+              />
+              {rateKgOverride !== '' && (
+                <button
+                  type="button"
+                  onClick={() => setRateKgOverride('')}
+                  className="px-3 py-2.5 border-2 border-red-200 text-red-500 rounded-xl hover:bg-red-50 text-xs font-bold shrink-0"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Live Preview */}
+          {previewItem && quantity && (
+            <div className="bg-blue-50 border-2 border-blue-200 rounded-xl px-4 py-3 grid grid-cols-5 gap-2 text-center">
+              <div>
+                <div className="text-xs text-gray-500 font-medium">Spare Qty</div>
+                <div className="font-bold text-gray-800">{previewItem.spareQty}</div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 font-medium">Final Qty</div>
+                <div className="font-bold text-gray-800">{previewItem.finalQty}</div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 font-medium">RM (m)</div>
+                <div className="font-bold text-gray-800">{previewItem.rm.toFixed(3)}</div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 font-medium">Wt (kg)</div>
+                <div className="font-bold text-gray-800">{previewItem.wt.toFixed(3)}</div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 font-medium">Cost (₹)</div>
+                <div className="font-bold text-blue-700">
+                  {previewItem.cost.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex gap-3 px-6 pb-5">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 py-2.5 border-2 border-gray-300 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            className="flex-1 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl text-sm font-bold hover:from-blue-600 hover:to-indigo-700 transition-all shadow-md"
+          >
+            Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function CustomBOMPage() {
@@ -614,6 +831,7 @@ export default function CustomBOMPage() {
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(null); // { buildingId, itemId }
+  const [editItem, setEditItem] = useState(null); // { buildingId, item }
   const [contextMenu, setContextMenu] = useState({ isOpen: false, buildingId: null, position: { x: 0, y: 0 } });
   const [renameDialog, setRenameDialog] = useState({ isOpen: false, buildingId: null, currentName: '' });
 
@@ -693,6 +911,16 @@ export default function CustomBOMPage() {
       b.id === buildingId ? { ...b, items: b.items.filter(i => i.id !== itemId) } : b
     ));
     setDeleteConfirm(null);
+  };
+
+  // Update full item from edit modal
+  const handleUpdateItem = (buildingId, updatedItem) => {
+    setBuildings(prev => prev.map(b =>
+      b.id !== buildingId ? b : {
+        ...b,
+        items: b.items.map(i => i.id === updatedItem.id ? updatedItem : i),
+      }
+    ));
   };
 
   // Inline edit item field
@@ -1146,17 +1374,28 @@ export default function CustomBOMPage() {
                           ₹{item.cost?.toLocaleString('en-IN', { maximumFractionDigits: 2 }) ?? '—'}
                         </td>
 
-                        {/* Delete */}
+                        {/* Edit + Delete */}
                         <td className="px-1 py-2 text-center">
-                          <button
-                            onClick={() => setDeleteConfirm({ buildingId: activeBuilding, itemId: item.id })}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-red-50 text-red-400 hover:text-red-600"
-                            title="Delete row"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                            </svg>
-                          </button>
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              onClick={() => setEditItem({ buildingId: activeBuilding, item })}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-blue-50 text-blue-400 hover:text-blue-600"
+                              title="Edit item"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => setDeleteConfirm({ buildingId: activeBuilding, itemId: item.id })}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-red-50 text-red-400 hover:text-red-600"
+                              title="Delete row"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                              </svg>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -1222,6 +1461,17 @@ export default function CustomBOMPage() {
         sparePercent={sparePercent}
         onClose={() => setShowAddModal(false)}
         onAdd={handleAddItem}
+      />
+
+      {/* Edit Item Modal */}
+      <EditItemModal
+        isOpen={!!editItem}
+        item={editItem?.item}
+        buildingId={editItem?.buildingId}
+        rates={rates}
+        sparePercent={sparePercent}
+        onClose={() => setEditItem(null)}
+        onSave={handleUpdateItem}
       />
 
       {/* Add Custom Item Modal */}
