@@ -1653,109 +1653,6 @@ export default function CustomBOMPage() {
             </table>
           </div>
 
-          {/* Notes */}
-          <div className="mx-4 mb-4 mt-2 p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded-lg">
-            <h3 className="text-sm font-bold text-gray-800 mb-3">Notes</h3>
-
-            {userNotes.length > 0 && (
-              <ol className="list-decimal list-inside space-y-2 text-sm text-gray-700 mb-3">
-                {userNotes.map(note => (
-                  <li key={note.id} className="flex items-start gap-2 group">
-                    {editingNoteId === note.id ? (
-                      <div className="flex-1 flex items-start gap-2">
-                        <textarea
-                          value={editNoteText}
-                          onChange={e => setEditNoteText(e.target.value)}
-                          rows={3}
-                          autoFocus
-                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 resize-none"
-                        />
-                        <div className="flex flex-col gap-1">
-                          <button
-                            onClick={() => {
-                              if (editNoteText.trim()) {
-                                setUserNotes(prev => prev.map(n => n.id === editingNoteId ? { ...n, text: editNoteText.trim() } : n));
-                                setEditingNoteId(null);
-                              }
-                            }}
-                            className="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"
-                          >Save</button>
-                          <button
-                            onClick={() => setEditingNoteId(null)}
-                            className="px-3 py-1 bg-gray-400 text-white rounded text-xs hover:bg-gray-500"
-                          >Cancel</button>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <span className="flex-1 whitespace-pre-wrap">{note.text}</span>
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                          <button
-                            onClick={() => { setEditingNoteId(note.id); setEditNoteText(note.text); }}
-                            className="p-1 text-blue-500 hover:text-blue-700" title="Edit"
-                          >
-                            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                              <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/>
-                            </svg>
-                          </button>
-                          <button
-                            onClick={() => { if (window.confirm('Delete this note?')) setUserNotes(prev => prev.filter(n => n.id !== note.id)); }}
-                            className="p-1 text-red-400 hover:text-red-600" title="Delete"
-                          >
-                            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd"/>
-                            </svg>
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </li>
-                ))}
-              </ol>
-            )}
-
-            {isAddingNote ? (
-              <div className="flex items-start gap-2">
-                <textarea
-                  value={newNoteText}
-                  onChange={e => setNewNoteText(e.target.value)}
-                  placeholder="Enter your note..."
-                  rows={3}
-                  autoFocus
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 resize-none"
-                />
-                <div className="flex flex-col gap-1">
-                  <button
-                    onClick={() => {
-                      if (newNoteText.trim()) {
-                        setUserNotes(prev => [...prev, { id: Date.now().toString(), text: newNoteText.trim() }]);
-                        setNewNoteText('');
-                        setIsAddingNote(false);
-                      }
-                    }}
-                    className="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"
-                  >Add</button>
-                  <button
-                    onClick={() => { setIsAddingNote(false); setNewNoteText(''); }}
-                    className="px-3 py-1 bg-gray-400 text-white rounded text-xs hover:bg-gray-500"
-                  >Cancel</button>
-                </div>
-              </div>
-            ) : (
-              editingNoteId === null && (
-                <button
-                  onClick={() => setIsAddingNote(true)}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-yellow-500 text-white rounded-lg text-xs font-bold hover:bg-yellow-600 transition-colors"
-                >
-                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd"/>
-                  </svg>
-                  Add Note
-                </button>
-              )
-            )}
-          </div>
-
           {/* Add Item Buttons */}
           <div className="p-4 border-t border-yellow-100 flex items-center gap-3">
             <button
@@ -1777,6 +1674,111 @@ export default function CustomBOMPage() {
               Add Custom Item
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* Notes — outside the building card */}
+      <div className="max-w-full mx-auto px-4 sm:px-6 pb-6">
+        <div className="bg-white rounded-2xl border-2 border-yellow-200 shadow-sm p-5">
+          <h3 className="text-sm font-bold text-gray-800 mb-3">Notes</h3>
+
+          {userNotes.length > 0 && (
+            <ol className="list-decimal list-inside space-y-2 text-sm text-gray-700 mb-3">
+              {userNotes.map(note => (
+                <li key={note.id} className="flex items-start gap-2 group">
+                  {editingNoteId === note.id ? (
+                    <div className="flex-1 flex items-start gap-2">
+                      <textarea
+                        value={editNoteText}
+                        onChange={e => setEditNoteText(e.target.value)}
+                        rows={3}
+                        autoFocus
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 resize-none"
+                      />
+                      <div className="flex flex-col gap-1">
+                        <button
+                          onClick={() => {
+                            if (editNoteText.trim()) {
+                              setUserNotes(prev => prev.map(n => n.id === editingNoteId ? { ...n, text: editNoteText.trim() } : n));
+                              setEditingNoteId(null);
+                            }
+                          }}
+                          className="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"
+                        >Save</button>
+                        <button
+                          onClick={() => setEditingNoteId(null)}
+                          className="px-3 py-1 bg-gray-400 text-white rounded text-xs hover:bg-gray-500"
+                        >Cancel</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <span className="flex-1 whitespace-pre-wrap">{note.text}</span>
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                        <button
+                          onClick={() => { setEditingNoteId(note.id); setEditNoteText(note.text); }}
+                          className="p-1 text-blue-500 hover:text-blue-700" title="Edit"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/>
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => { if (window.confirm('Delete this note?')) setUserNotes(prev => prev.filter(n => n.id !== note.id)); }}
+                          className="p-1 text-red-400 hover:text-red-600" title="Delete"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd"/>
+                          </svg>
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </li>
+              ))}
+            </ol>
+          )}
+
+          {isAddingNote ? (
+            <div className="flex items-start gap-2">
+              <textarea
+                value={newNoteText}
+                onChange={e => setNewNoteText(e.target.value)}
+                placeholder="Enter your note..."
+                rows={3}
+                autoFocus
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 resize-none"
+              />
+              <div className="flex flex-col gap-1">
+                <button
+                  onClick={() => {
+                    if (newNoteText.trim()) {
+                      setUserNotes(prev => [...prev, { id: Date.now().toString(), text: newNoteText.trim() }]);
+                      setNewNoteText('');
+                      setIsAddingNote(false);
+                    }
+                  }}
+                  className="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"
+                >Add</button>
+                <button
+                  onClick={() => { setIsAddingNote(false); setNewNoteText(''); }}
+                  className="px-3 py-1 bg-gray-400 text-white rounded text-xs hover:bg-gray-500"
+                >Cancel</button>
+              </div>
+            </div>
+          ) : (
+            editingNoteId === null && (
+              <button
+                onClick={() => setIsAddingNote(true)}
+                className="flex items-center gap-2 px-3 py-1.5 bg-yellow-500 text-white rounded-lg text-xs font-bold hover:bg-yellow-600 transition-colors"
+              >
+                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd"/>
+                </svg>
+                Add Note
+              </button>
+            )
+          )}
         </div>
       </div>
 
