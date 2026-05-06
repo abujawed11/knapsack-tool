@@ -597,7 +597,20 @@ function AddCustomItemModal({ isOpen, rates, sparePercent, onClose, onAdd }) {
 
 // ── Edit Item Modal ───────────────────────────────────────────────────────────
 
-function EditItemModal({ isOpen, item, buildingId, rates, sparePercent, onClose, onSave }) {
+function EditItemModal({ isOpen, item, buildingId, profiles, rates, sparePercent, onClose, onSave }) {
+  const [mode, setMode] = useState('manual'); // 'manual' | 'db'
+
+  // Master DB picker (fills all at once)
+  const [dbTypeFilter, setDbTypeFilter] = useState('PROFILE');
+  const [dbSearch, setDbSearch] = useState('');
+  const [dbSelected, setDbSelected] = useState(null);
+  const [showMasterDropdown, setShowMasterDropdown] = useState(false);
+
+  // Per-field DB picker
+  const [fieldPicker, setFieldPicker] = useState(null); // field name string or null
+  const [fieldPickerSearch, setFieldPickerSearch] = useState('');
+
+  // Field values
   const [genericName, setGenericName] = useState('');
   const [itemCode, setItemCode] = useState('');
   const [itemDescription, setItemDescription] = useState('');
@@ -611,6 +624,13 @@ function EditItemModal({ isOpen, item, buildingId, rates, sparePercent, onClose,
 
   useEffect(() => {
     if (isOpen && item) {
+      setMode('manual');
+      setDbSelected(null);
+      setDbSearch('');
+      setShowMasterDropdown(false);
+      setDbTypeFilter('PROFILE');
+      setFieldPicker(null);
+      setFieldPickerSearch('');
       setGenericName(item.genericName || '');
       setItemCode(item.itemCode || '');
       setItemDescription(item.itemDescription || '');
@@ -624,13 +644,113 @@ function EditItemModal({ isOpen, item, buildingId, rates, sparePercent, onClose,
     }
   }, [isOpen, item]);
 
+  // ── Master DB helpers ──────────────────────────────────────────────────────
+
+  const filteredProfiles = profiles.filter(p =>
+    p.itemType === dbTypeFilter &&
+    (p.genericName?.toLowerCase().includes(dbSearch.toLowerCase()) ||
+     p.itemDescription?.toLowerCase().includes(dbSearch.toLowerCase()))
+  ).slice(0, 50);
+
+  const handleMasterDbSelect = (profile) => {
+    setDbSelected(profile);
+    setDbSearch('');
+    setShowMasterDropdown(false);
+    setGenericName(profile.genericName || '');
+    setItemCode(profile.sunrackCode || profile.serialNumber || '');
+    setItemDescription(profile.itemDescription || '');
+    setMaterial(profile.material || '');
+    setUom(profile.uom || '');
+    setDesignWeight(profile.designWeight != null ? String(profile.designWeight) : '');
+    setCostPerPiece(profile.costPerPiece != null ? String(profile.costPerPiece) : '');
+  };
+
+  const handleModeToggle = (newMode) => {
+    setMode(newMode);
+    setDbSelected(null);
+    setDbSearch('');
+    setShowMasterDropdown(false);
+    setFieldPicker(null);
+    setFieldPickerSearch('');
+  };
+
+  // ── Per-field DB helpers ───────────────────────────────────────────────────
+
+  const getFieldOptions = (field) => {
+    const s = fieldPickerSearch.toLowerCase();
+    switch (field) {
+      case 'genericName':
+        return profiles
+          .filter(p => p.genericName?.toLowerCase().includes(s))
+          .slice(0, 40)
+          .map(p => ({ label: p.genericName, sub: p.sunrackCode || p.serialNumber || '', value: p.genericName }));
+      case 'itemCode':
+        return profiles
+          .filter(p =>
+            (p.sunrackCode || p.serialNumber || '').toLowerCase().includes(s) ||
+            p.genericName?.toLowerCase().includes(s)
+          )
+          .slice(0, 40)
+          .map(p => ({ label: p.sunrackCode || p.serialNumber || '—', sub: p.genericName, value: p.sunrackCode || p.serialNumber || '' }));
+      case 'itemDescription':
+        return profiles
+          .filter(p => p.itemDescription?.toLowerCase().includes(s) || p.genericName?.toLowerCase().includes(s))
+          .slice(0, 40)
+          .map(p => ({ label: p.itemDescription || p.genericName, sub: p.genericName, value: p.itemDescription || '' }));
+      case 'material': {
+        const unique = [...new Set(profiles.map(p => p.material).filter(Boolean))];
+        return unique.filter(m => m.toLowerCase().includes(s)).map(m => ({ label: m, value: m }));
+      }
+      case 'uom': {
+        const unique = [...new Set(profiles.map(p => p.uom).filter(Boolean))];
+        return unique.filter(u => u.toLowerCase().includes(s)).map(u => ({ label: u, value: u }));
+      }
+      case 'designWeight':
+        return profiles
+          .filter(p => p.designWeight != null && p.genericName?.toLowerCase().includes(s))
+          .slice(0, 40)
+          .map(p => ({ label: String(p.designWeight), sub: p.genericName, value: String(p.designWeight) }));
+      case 'costPerPiece':
+        return profiles
+          .filter(p => p.costPerPiece != null && p.genericName?.toLowerCase().includes(s))
+          .slice(0, 40)
+          .map(p => ({ label: `₹${p.costPerPiece}`, sub: p.genericName, value: String(p.costPerPiece) }));
+      default:
+        return [];
+    }
+  };
+
+  const toggleFieldPicker = (field) => {
+    if (fieldPicker === field) {
+      setFieldPicker(null);
+      setFieldPickerSearch('');
+    } else {
+      setFieldPicker(field);
+      setFieldPickerSearch('');
+      setShowMasterDropdown(false);
+    }
+  };
+
+  const handleFieldPickerSelect = (field, value) => {
+    const setters = {
+      genericName: setGenericName,
+      itemCode: setItemCode,
+      itemDescription: setItemDescription,
+      material: setMaterial,
+      uom: setUom,
+      designWeight: setDesignWeight,
+      costPerPiece: setCostPerPiece,
+    };
+    setters[field]?.(value);
+    setFieldPicker(null);
+    setFieldPickerSearch('');
+  };
+
+  // ── Preview & Save ─────────────────────────────────────────────────────────
+
   const previewItem = item ? calcItem({
     ...item,
-    genericName,
-    itemCode,
-    itemDescription,
-    material,
-    uom,
+    genericName, itemCode, itemDescription, material, uom,
     length: parseFloat(length) || 0,
     quantity: parseFloat(quantity) || 0,
     designWeight: parseFloat(designWeight) || 0,
@@ -641,21 +761,21 @@ function EditItemModal({ isOpen, item, buildingId, rates, sparePercent, onClose,
   const handleSave = () => {
     if (!genericName.trim()) { alert('Item name is required'); return; }
     if (!quantity || parseFloat(quantity) <= 0) { alert('Please enter a valid quantity'); return; }
-
     const updatedItem = calcItem({
       ...item,
+      profileId: dbSelected?.id ?? item.profileId,
+      itemType: dbSelected ? dbSelected.itemType : item.itemType,
+      profileImagePath: dbSelected?.profileImagePath ?? item.profileImagePath,
       genericName: genericName.trim(),
       itemCode: itemCode.trim(),
       itemDescription: itemDescription.trim(),
-      material,
-      uom,
+      material, uom,
       length: parseFloat(length) || 0,
       quantity: parseFloat(quantity),
       designWeight: parseFloat(designWeight) || 0,
       costPerPiece: parseFloat(costPerPiece) || 0,
       rateKgOverride: rateKgOverride !== '' ? parseFloat(rateKgOverride) : null,
     }, rates, sparePercent);
-
     onSave(buildingId, updatedItem);
     onClose();
   };
@@ -664,56 +784,192 @@ function EditItemModal({ isOpen, item, buildingId, rates, sparePercent, onClose,
 
   const inputCls = 'w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent text-sm';
 
+  // Small "DB" badge button shown next to each label in From DB mode
+  const DbBadge = ({ field }) => mode !== 'db' ? null : (
+    <button
+      type="button"
+      onClick={() => toggleFieldPicker(field)}
+      className={`ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-bold transition-colors ${
+        fieldPicker === field
+          ? 'bg-indigo-500 text-white'
+          : 'bg-indigo-100 text-indigo-600 hover:bg-indigo-200'
+      }`}
+      title="Pick value from DB"
+    >
+      <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 7c0-1.657 3.582-3 8-3s8 1.343 8 3v3c0 1.657-3.582 3-8 3S4 11.657 4 10V7z"/>
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 10v4c0 1.657 3.582 3 8 3s8-1.343 8-3v-4"/>
+      </svg>
+      DB
+    </button>
+  );
+
+  // Inline dropdown shown below a field when its picker is open
+  const FieldPickerDropdown = ({ field }) => {
+    if (fieldPicker !== field) return null;
+    const options = getFieldOptions(field);
+    return (
+      <div className="absolute z-20 left-0 right-0 mt-1 bg-white border-2 border-indigo-300 rounded-xl shadow-2xl">
+        <div className="p-2 border-b border-indigo-100">
+          <input
+            type="text"
+            value={fieldPickerSearch}
+            onChange={e => setFieldPickerSearch(e.target.value)}
+            placeholder="Search..."
+            autoFocus
+            className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          />
+        </div>
+        <div className="max-h-40 overflow-y-auto">
+          {options.length === 0 ? (
+            <div className="px-4 py-4 text-center text-sm text-gray-400">No options found</div>
+          ) : (
+            options.map((opt, i) => (
+              <button
+                key={i}
+                type="button"
+                onMouseDown={() => handleFieldPickerSelect(field, opt.value)}
+                className="w-full text-left px-4 py-2 hover:bg-indigo-50 border-b border-gray-100 last:border-0 transition-colors"
+              >
+                <div className="text-sm font-semibold text-gray-800">{opt.label}</div>
+                {opt.sub && <div className="text-xs text-gray-400 truncate">{opt.sub}</div>}
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-500 to-indigo-600 px-6 py-4 rounded-t-2xl">
-          <h2 className="text-lg font-bold text-white">Edit Item</h2>
-          <p className="text-blue-100 text-sm mt-0.5">
-            {item.itemType === 'CUSTOM' ? 'Custom Item' : item.itemType === 'FASTENER' ? 'Fastener' : 'Profile'} — all fields editable
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-white">Edit Item</h2>
+              <p className="text-blue-100 text-sm mt-0.5">All fields editable</p>
+            </div>
+            <div className="flex items-center gap-2 bg-white/20 rounded-xl p-1">
+              <button
+                type="button"
+                onClick={() => handleModeToggle('manual')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${mode === 'manual' ? 'bg-white text-indigo-700 shadow' : 'text-white/80 hover:text-white'}`}
+              >
+                Manual
+              </button>
+              <button
+                type="button"
+                onClick={() => handleModeToggle('db')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${mode === 'db' ? 'bg-white text-indigo-700 shadow' : 'text-white/80 hover:text-white'}`}
+              >
+                From DB
+              </button>
+            </div>
+          </div>
         </div>
 
         <div className="px-6 py-5 space-y-4">
+
+          {/* Master DB picker — fill all fields at once */}
+          {mode === 'db' && (
+            <div className="space-y-3 pb-3 border-b-2 border-indigo-100">
+              <p className="text-xs text-indigo-600 font-semibold">
+                Use the catalog picker below to fill all fields at once, or click the <span className="bg-indigo-100 text-indigo-600 px-1 py-0.5 rounded font-bold">DB</span> badge next to any field label to fill just that field.
+              </p>
+              <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1 w-fit">
+                {[{ label: 'Profile', value: 'PROFILE' }, { label: 'Fastener', value: 'FASTENER' }].map(({ label, value }) => (
+                  <button key={value} type="button"
+                    onClick={() => { setDbTypeFilter(value); setDbSelected(null); setDbSearch(''); }}
+                    className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${
+                      dbTypeFilter === value
+                        ? value === 'PROFILE' ? 'bg-green-500 text-white shadow-sm' : 'bg-blue-500 text-white shadow-sm'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >{label}</button>
+                ))}
+              </div>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => { setShowMasterDropdown(p => !p); setFieldPicker(null); }}
+                  className={`w-full flex items-center justify-between px-4 py-2.5 border-2 rounded-xl text-sm text-left transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-400 ${showMasterDropdown ? 'border-indigo-400' : 'border-gray-200 hover:border-indigo-300'}`}
+                >
+                  {dbSelected
+                    ? <div className="min-w-0"><div className="font-semibold text-gray-800 truncate">{dbSelected.genericName}</div><div className="text-xs text-gray-400">{dbSelected.sunrackCode || dbSelected.serialNumber || ''}</div></div>
+                    : <span className="text-gray-400">Select from catalog to fill all fields...</span>
+                  }
+                  <svg className={`w-4 h-4 text-gray-400 shrink-0 ml-2 transition-transform ${showMasterDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7"/>
+                  </svg>
+                </button>
+                {showMasterDropdown && (
+                  <div className="absolute z-20 w-full mt-1 bg-white border-2 border-indigo-300 rounded-xl shadow-2xl">
+                    <div className="p-2 border-b border-indigo-100">
+                      <input type="text" value={dbSearch} onChange={e => setDbSearch(e.target.value)} placeholder="Type to search..." autoFocus
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                    </div>
+                    <div className="max-h-48 overflow-y-auto">
+                      {filteredProfiles.length === 0
+                        ? <div className="px-4 py-6 text-center text-sm text-gray-400">No items found</div>
+                        : filteredProfiles.map(p => (
+                          <button key={p.serialNumber || p.id} type="button" onMouseDown={() => handleMasterDbSelect(p)}
+                            className={`w-full text-left px-4 py-2.5 hover:bg-indigo-50 border-b border-gray-100 last:border-0 transition-colors ${dbSelected?.id === p.id ? 'bg-indigo-50' : ''}`}>
+                            <div className="font-semibold text-sm text-gray-800">{p.genericName}</div>
+                            <div className="text-xs text-gray-500 flex gap-3 mt-0.5">
+                              {p.sunrackCode && <span>Code: {p.sunrackCode}</span>}
+                              <span className={`px-1.5 py-0.5 rounded text-xs font-bold ${p.itemType === 'FASTENER' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>{p.itemType}</span>
+                            </div>
+                          </button>
+                        ))
+                      }
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Item Name */}
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1.5">Item Name <span className="text-red-500">*</span></label>
+          <div className="relative">
+            <label className="block text-sm font-bold text-gray-700 mb-1.5">
+              Item Name <span className="text-red-500">*</span><DbBadge field="genericName" />
+            </label>
             <input type="text" value={genericName} onChange={e => setGenericName(e.target.value)} className={inputCls} />
+            <FieldPickerDropdown field="genericName" />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            {/* Item Code */}
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-1.5">Sunrack Code</label>
+            <div className="relative">
+              <label className="block text-sm font-bold text-gray-700 mb-1.5">Sunrack Code<DbBadge field="itemCode" /></label>
               <input type="text" value={itemCode} onChange={e => setItemCode(e.target.value)} className={inputCls} />
+              <FieldPickerDropdown field="itemCode" />
             </div>
-            {/* UoM */}
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-1.5">UoM</label>
+            <div className="relative">
+              <label className="block text-sm font-bold text-gray-700 mb-1.5">UoM<DbBadge field="uom" /></label>
               <input type="text" value={uom} onChange={e => setUom(e.target.value)} className={inputCls} />
+              <FieldPickerDropdown field="uom" />
             </div>
           </div>
 
-          {/* Item Description */}
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1.5">Item Description</label>
+          <div className="relative">
+            <label className="block text-sm font-bold text-gray-700 mb-1.5">Item Description<DbBadge field="itemDescription" /></label>
             <input type="text" value={itemDescription} onChange={e => setItemDescription(e.target.value)} className={inputCls} />
+            <FieldPickerDropdown field="itemDescription" />
           </div>
 
-          {/* Material */}
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1.5">Material</label>
+          <div className="relative">
+            <label className="block text-sm font-bold text-gray-700 mb-1.5">Material<DbBadge field="material" /></label>
             <input type="text" value={material} onChange={e => setMaterial(e.target.value)} placeholder="e.g. SS 304" className={inputCls} />
+            <FieldPickerDropdown field="material" />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            {/* Length */}
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-1.5">Length (mm)</label>
               <input type="number" min="0" step="1" value={length} onChange={e => setLength(e.target.value)} className={inputCls} />
             </div>
-            {/* Quantity */}
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-1.5">Quantity <span className="text-red-500">*</span></label>
               <input type="number" min="0" step="1" value={quantity} onChange={e => setQuantity(e.target.value)} className={inputCls} />
@@ -721,42 +977,27 @@ function EditItemModal({ isOpen, item, buildingId, rates, sparePercent, onClose,
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            {/* Design Weight */}
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-1.5">Wt/RM (kg/m)</label>
+            <div className="relative">
+              <label className="block text-sm font-bold text-gray-700 mb-1.5">Wt/RM (kg/m)<DbBadge field="designWeight" /></label>
               <input type="number" min="0" step="0.0001" value={designWeight} onChange={e => setDesignWeight(e.target.value)} className={inputCls} />
+              <FieldPickerDropdown field="designWeight" />
             </div>
-            {/* Cost Per Piece */}
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-1.5">Rate/Piece (₹)</label>
+            <div className="relative">
+              <label className="block text-sm font-bold text-gray-700 mb-1.5">Rate/Piece (₹)<DbBadge field="costPerPiece" /></label>
               <input type="number" min="0" step="0.01" value={costPerPiece} onChange={e => setCostPerPiece(e.target.value)} className={`${inputCls} border-blue-200 bg-blue-50`} />
+              <FieldPickerDropdown field="costPerPiece" />
             </div>
           </div>
 
-          {/* Rate/kg Override */}
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-1.5">
               Rate/kg Override (₹)
               <span className="ml-2 text-xs font-normal text-gray-400">— leave blank to use global rate</span>
             </label>
             <div className="flex gap-2">
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={rateKgOverride}
-                onChange={e => setRateKgOverride(e.target.value)}
-                placeholder="Leave blank for global rate"
-                className={inputCls}
-              />
+              <input type="number" min="0" step="0.01" value={rateKgOverride} onChange={e => setRateKgOverride(e.target.value)} placeholder="Leave blank for global rate" className={inputCls} />
               {rateKgOverride !== '' && (
-                <button
-                  type="button"
-                  onClick={() => setRateKgOverride('')}
-                  className="px-3 py-2.5 border-2 border-red-200 text-red-500 rounded-xl hover:bg-red-50 text-xs font-bold shrink-0"
-                >
-                  Reset
-                </button>
+                <button type="button" onClick={() => setRateKgOverride('')} className="px-3 py-2.5 border-2 border-red-200 text-red-500 rounded-xl hover:bg-red-50 text-xs font-bold shrink-0">Reset</button>
               )}
             </div>
           </div>
@@ -764,48 +1005,19 @@ function EditItemModal({ isOpen, item, buildingId, rates, sparePercent, onClose,
           {/* Live Preview */}
           {previewItem && quantity && (
             <div className="bg-blue-50 border-2 border-blue-200 rounded-xl px-4 py-3 grid grid-cols-5 gap-2 text-center">
-              <div>
-                <div className="text-xs text-gray-500 font-medium">Spare Qty</div>
-                <div className="font-bold text-gray-800">{previewItem.spareQty}</div>
-              </div>
-              <div>
-                <div className="text-xs text-gray-500 font-medium">Final Qty</div>
-                <div className="font-bold text-gray-800">{previewItem.finalQty}</div>
-              </div>
-              <div>
-                <div className="text-xs text-gray-500 font-medium">RM (m)</div>
-                <div className="font-bold text-gray-800">{previewItem.rm.toFixed(3)}</div>
-              </div>
-              <div>
-                <div className="text-xs text-gray-500 font-medium">Wt (kg)</div>
-                <div className="font-bold text-gray-800">{previewItem.wt.toFixed(3)}</div>
-              </div>
-              <div>
-                <div className="text-xs text-gray-500 font-medium">Cost (₹)</div>
-                <div className="font-bold text-blue-700">
-                  {previewItem.cost.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
-                </div>
-              </div>
+              <div><div className="text-xs text-gray-500 font-medium">Spare Qty</div><div className="font-bold text-gray-800">{previewItem.spareQty}</div></div>
+              <div><div className="text-xs text-gray-500 font-medium">Final Qty</div><div className="font-bold text-gray-800">{previewItem.finalQty}</div></div>
+              <div><div className="text-xs text-gray-500 font-medium">RM (m)</div><div className="font-bold text-gray-800">{previewItem.rm.toFixed(3)}</div></div>
+              <div><div className="text-xs text-gray-500 font-medium">Wt (kg)</div><div className="font-bold text-gray-800">{previewItem.wt.toFixed(3)}</div></div>
+              <div><div className="text-xs text-gray-500 font-medium">Cost (₹)</div><div className="font-bold text-blue-700">{previewItem.cost.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</div></div>
             </div>
           )}
         </div>
 
         {/* Footer */}
         <div className="flex gap-3 px-6 pb-5">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 py-2.5 border-2 border-gray-300 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            className="flex-1 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl text-sm font-bold hover:from-blue-600 hover:to-indigo-700 transition-all shadow-md"
-          >
-            Save Changes
-          </button>
+          <button type="button" onClick={onClose} className="flex-1 py-2.5 border-2 border-gray-300 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors">Cancel</button>
+          <button type="button" onClick={handleSave} className="flex-1 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl text-sm font-bold hover:from-blue-600 hover:to-indigo-700 transition-all shadow-md">Save Changes</button>
         </div>
       </div>
     </div>
@@ -1468,6 +1680,7 @@ export default function CustomBOMPage() {
         isOpen={!!editItem}
         item={editItem?.item}
         buildingId={editItem?.buildingId}
+        profiles={profiles}
         rates={rates}
         sparePercent={sparePercent}
         onClose={() => setEditItem(null)}
