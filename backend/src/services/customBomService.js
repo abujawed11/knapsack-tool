@@ -27,8 +27,22 @@ class CustomBomService {
 
     const row = rows[0];
     let buildings = [];
+    let userNotes = [];
+    let hdgRate = 0;
+    let magnelisRate = 0;
+
     try {
-      buildings = typeof row.buildings === 'string' ? JSON.parse(row.buildings) : (row.buildings || []);
+      const parsed = typeof row.buildings === 'string' ? JSON.parse(row.buildings) : (row.buildings || []);
+      if (Array.isArray(parsed)) {
+        // legacy format — plain array
+        buildings = parsed;
+      } else if (parsed && typeof parsed === 'object') {
+        // new format — wrapper object
+        buildings = parsed.buildings || [];
+        userNotes = parsed.userNotes || [];
+        hdgRate = parsed.hdgRate || 0;
+        magnelisRate = parsed.magnelisRate || 0;
+      }
     } catch {
       buildings = [];
     }
@@ -42,7 +56,10 @@ class CustomBomService {
       al6063Rate: Number(row.al6063_rate || 0),
       t6Rate: Number(row.t6_rate || 0),
       giRate: Number(row.gi_rate || 0),
+      hdgRate: Number(hdgRate),
+      magnelisRate: Number(magnelisRate),
       buildings,
+      userNotes,
     };
   }
 
@@ -56,10 +73,13 @@ class CustomBomService {
       al6063Rate = 0,
       t6Rate = 0,
       giRate = 0,
+      hdgRate = 0,
+      magnelisRate = 0,
       buildings = [],
+      userNotes = [],
     } = data;
 
-    const buildingsJson = JSON.stringify(buildings);
+    const buildingsJson = JSON.stringify({ buildings, userNotes, hdgRate, magnelisRate });
 
     // Check if record exists
     const existing = await prisma.$queryRaw`
@@ -94,7 +114,10 @@ class CustomBomService {
       al6063Rate: Number(al6063Rate),
       t6Rate: Number(t6Rate),
       giRate: Number(giRate),
+      hdgRate: Number(hdgRate),
+      magnelisRate: Number(magnelisRate),
       buildings,
+      userNotes,
     };
   }
 }
