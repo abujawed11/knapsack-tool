@@ -7,11 +7,13 @@ import RenameTabDialog from '../components/RenameTabDialog';
 import { API_URL } from '../services/config';
 import NumberInputWithSpinner from '../components/NumberInputWithSpinner';
 
-const MATERIALS = ['SS 304', 'Al 6063', 'GI'];
+const MATERIALS = ['SS 304', 'Al 6063', 'GI', 'HDG', 'Magnelis'];
 
 const MATERIAL_RATE_KEYS = {
   'Al 6063': 'al6063Rate',
   'GI': 'giRate',
+  'HDG': 'hdgRate',
+  'Magnelis': 'magnelisRate',
 };
 
 function calcItem(item, rates, sparePercent = 0) {
@@ -1034,7 +1036,7 @@ export default function CustomBOMPage() {
   const [profiles, setProfiles] = useState([]);
   const [moduleWp, setModuleWp] = useState(590);
   const [sparePercent, setSparePercent] = useState(1);
-  const [rates, setRates] = useState({ al6063Rate: 320, giRate: 70 });
+  const [rates, setRates] = useState({ al6063Rate: 320, giRate: 70, hdgRate: 125, magnelisRate: 125 });
   const [buildings, setBuildings] = useState([]);
   const [activeBuilding, setActiveBuilding] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -1065,10 +1067,10 @@ export default function CustomBOMPage() {
         setModuleWp(bomData.moduleWp ?? 590);
         setSparePercent(bomData.sparePercent ?? 1);
         setRates({
-
           al6063Rate: bomData.al6063Rate || 320,
-
           giRate: bomData.giRate || 70,
+          hdgRate: bomData.hdgRate || 125,
+          magnelisRate: bomData.magnelisRate || 125,
         });
 
         const loadedBuildings = bomData.buildings?.length > 0
@@ -1175,10 +1177,10 @@ export default function CustomBOMPage() {
       await customBomAPI.save(projectId, {
         moduleWp: parseFloat(moduleWp) || 590,
         sparePercent: parseFloat(sparePercent) || 1,
-
         al6063Rate: parseFloat(rates.al6063Rate) || 0,
-
         giRate: parseFloat(rates.giRate) || 0,
+        hdgRate: parseFloat(rates.hdgRate) || 0,
+        magnelisRate: parseFloat(rates.magnelisRate) || 0,
         buildings,
       });
       setSaveMsg('Saved!');
@@ -1301,6 +1303,8 @@ export default function CustomBOMPage() {
             {[
               { label: 'Al 6063 (₹/kg)', key: 'al6063Rate' },
               { label: 'GI (₹/kg)', key: 'giRate' },
+              { label: 'HDG (₹/kg)', key: 'hdgRate' },
+              { label: 'Magnelis (₹/kg)', key: 'magnelisRate' },
             ].map(({ label, key }) => (
               <div key={key} className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 min-w-[200px]">
                 <svg className="w-4 h-4 text-orange-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
