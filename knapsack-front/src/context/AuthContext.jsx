@@ -41,6 +41,19 @@ export const AuthProvider = ({ children }) => {
     initAuth();
   }, []);
 
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      localStorage.removeItem('token');
+      setUser(null);
+      setPermissions(null);
+      setAppDefaults(null);
+      window.location.href = '/';
+    };
+
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
+  }, []);
+
   const login = async (username, password) => {
     const data = await authAPI.login(username, password);
     localStorage.setItem('token', data.token);

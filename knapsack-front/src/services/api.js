@@ -62,10 +62,9 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-      // Clear token if unauthorized (except for specific logic handled in components)
-       if (error.response.data?.code !== 'PASSWORD_CHANGE_REQUIRED') {
-         // Optionally redirect to login or clear state
-       }
+      if (error.response.data?.code !== 'PASSWORD_CHANGE_REQUIRED') {
+        window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+      }
     }
 
     // Don't log 404 errors for saved-boms endpoints (expected when no saved BOM exists)
