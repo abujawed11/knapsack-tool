@@ -6,6 +6,8 @@ import TabContextMenu from '../components/TabContextMenu';
 import RenameTabDialog from '../components/RenameTabDialog';
 import { API_URL } from '../services/config';
 import NumberInputWithSpinner from '../components/NumberInputWithSpinner';
+import PrintSettingsModal from '../components/BOM/PrintSettingsModal';
+import { useAuth } from '../context/AuthContext';
 
 const MATERIALS = ['SS 304', 'Al 6063', 'GI', 'HDG', 'Magnelis'];
 
@@ -1031,8 +1033,10 @@ function EditItemModal({ isOpen, item, buildingId, profiles, rates, sparePercent
 export default function CustomBOMPage() {
   const navigate = useNavigate();
   const projectId = getCurrentProjectId();
+  const { user } = useAuth();
 
   const [project, setProject] = useState(null);
+  const [printModalOpen, setPrintModalOpen] = useState(false);
   const [profiles, setProfiles] = useState([]);
   const [moduleWp, setModuleWp] = useState(590);
   const [sparePercent, setSparePercent] = useState(1);
@@ -1176,6 +1180,21 @@ export default function CustomBOMPage() {
     })));
   };
 
+  const handlePrintSettings = (settings) => {
+    sessionStorage.setItem('customBomPrint', JSON.stringify({
+      buildings,
+      printSettings: settings,
+      project,
+      userNotes,
+      rates,
+      sparePercent,
+      moduleWp,
+      printedBy: user?.username || 'Unknown',
+    }));
+    setPrintModalOpen(false);
+    navigate('/custom-bom/print-preview');
+  };
+
   // Save
   const handleSave = async () => {
     setSaving(true);
@@ -1247,6 +1266,15 @@ export default function CustomBOMPage() {
                 {saveMsg}
               </span>
             )}
+            <button
+              onClick={() => setPrintModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white font-bold text-sm rounded-xl hover:bg-green-700 transition-all"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clipRule="evenodd" />
+              </svg>
+              Print BOM
+            </button>
             <button
               onClick={handleSave}
               disabled={saving}
@@ -1841,6 +1869,15 @@ export default function CustomBOMPage() {
           renameBuilding(renameDialog.buildingId, newName);
           setRenameDialog(d => ({ ...d, isOpen: false }));
         }}
+      />
+
+      {/* Print Settings Modal */}
+      <PrintSettingsModal
+        isOpen={printModalOpen}
+        onClose={() => setPrintModalOpen(false)}
+        onPrint={handlePrintSettings}
+        userNotes={userNotes}
+        changeLog={[]}
       />
 
       {/* Delete Confirm Modal */}

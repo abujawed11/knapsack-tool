@@ -12,6 +12,7 @@ import CustomBOMPage from './pages/CustomBOMPage';
 import WalkwayApp from './pages/WalkwayApp';
 import WalkwayBOMPage from './pages/WalkwayBOMPage';
 import WalkwayBOMPrintPreview from './pages/WalkwayBOMPrintPreview';
+import CustomBOMPrintPreview from './pages/CustomBOMPrintPreview';
 import AdminPanel from './pages/AdminPanel';
 import AdminBOMView from './pages/AdminBOMView';
 import BomListPage from './pages/BomListPage';
@@ -152,6 +153,15 @@ export default function Router() {
           element={
             <PrivateRoute>
               <CustomBOMPage />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/custom-bom/print-preview"
+          element={
+            <PrivateRoute>
+              <CustomBOMPrintPreview />
             </PrivateRoute>
           }
         />
