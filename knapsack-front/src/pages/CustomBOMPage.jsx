@@ -40,6 +40,7 @@ function calcItem(item, rates, sparePercent = 0) {
 }
 
 // ── Add Item Modal ────────────────────────────────────────────────────────────
+// Unused — superseded by AddCustomItemModal which now has Manual + From DB modes
 
 function AddItemModal({ isOpen, profiles, rates, sparePercent, onClose, onAdd }) {
   const [search, setSearch] = useState('');
@@ -362,11 +363,25 @@ function AddItemModal({ isOpen, profiles, rates, sparePercent, onClose, onAdd })
 
 // ── Add Custom Item Modal ─────────────────────────────────────────────────────
 
-function AddCustomItemModal({ isOpen, rates, sparePercent, onClose, onAdd }) {
+function AddCustomItemModal({ isOpen, profiles, rates, sparePercent, onClose, onAdd }) {
+  const [mode, setMode] = useState('manual'); // 'manual' | 'db'
+
+  // Master DB picker
+  const [dbTypeFilter, setDbTypeFilter] = useState('PROFILE');
+  const [dbSearch, setDbSearch] = useState('');
+  const [dbSelected, setDbSelected] = useState(null);
+  const [showMasterDropdown, setShowMasterDropdown] = useState(false);
+
+  // Per-field DB picker
+  const [fieldPicker, setFieldPicker] = useState(null);
+  const [fieldPickerSearch, setFieldPickerSearch] = useState('');
+
+  // Field values
   const [genericName, setGenericName] = useState('');
   const [itemCode, setItemCode] = useState('');
   const [itemDescription, setItemDescription] = useState('');
   const [material, setMaterial] = useState('');
+  const [uom, setUom] = useState('');
   const [length, setLength] = useState('');
   const [quantity, setQuantity] = useState('');
   const [designWeight, setDesignWeight] = useState('');
@@ -374,10 +389,18 @@ function AddCustomItemModal({ isOpen, rates, sparePercent, onClose, onAdd }) {
 
   useEffect(() => {
     if (isOpen) {
+      setMode('manual');
+      setDbSelected(null);
+      setDbSearch('');
+      setShowMasterDropdown(false);
+      setDbTypeFilter('PROFILE');
+      setFieldPicker(null);
+      setFieldPickerSearch('');
       setGenericName('');
       setItemCode('');
       setItemDescription('');
       setMaterial('');
+      setUom('');
       setLength('');
       setQuantity('');
       setDesignWeight('');
@@ -385,13 +408,105 @@ function AddCustomItemModal({ isOpen, rates, sparePercent, onClose, onAdd }) {
     }
   }, [isOpen]);
 
-  const canPreview = quantity && parseFloat(quantity) > 0 && length && parseFloat(length) > 0;
+  // ── Master DB helpers ──────────────────────────────────────────────────────
 
+  const filteredProfiles = (profiles || []).filter(p =>
+    p.itemType === dbTypeFilter &&
+    (p.genericName?.toLowerCase().includes(dbSearch.toLowerCase()) ||
+     p.itemDescription?.toLowerCase().includes(dbSearch.toLowerCase()))
+  ).slice(0, 50);
+
+  const handleMasterDbSelect = (profile) => {
+    setDbSelected(profile);
+    setDbSearch('');
+    setShowMasterDropdown(false);
+    setGenericName(profile.genericName || '');
+    setItemCode(profile.sunrackCode || profile.serialNumber || '');
+    setItemDescription(profile.itemDescription || '');
+    setMaterial(profile.material || '');
+    setUom(profile.uom || '');
+    setDesignWeight(profile.designWeight != null ? String(profile.designWeight) : '');
+    setCostPerPiece(profile.costPerPiece != null ? String(profile.costPerPiece) : '');
+  };
+
+  const handleModeToggle = (newMode) => {
+    setMode(newMode);
+    setDbSelected(null);
+    setDbSearch('');
+    setShowMasterDropdown(false);
+    setFieldPicker(null);
+    setFieldPickerSearch('');
+  };
+
+  // ── Per-field DB helpers ───────────────────────────────────────────────────
+
+  const getFieldOptions = (field) => {
+    const s = fieldPickerSearch.toLowerCase();
+    const allProfiles = profiles || [];
+    switch (field) {
+      case 'genericName':
+        return allProfiles.filter(p => p.genericName?.toLowerCase().includes(s)).slice(0, 40)
+          .map(p => ({ label: p.genericName, sub: p.sunrackCode || p.serialNumber || '', value: p.genericName }));
+      case 'itemCode':
+        return allProfiles.filter(p =>
+          (p.sunrackCode || p.serialNumber || '').toLowerCase().includes(s) ||
+          p.genericName?.toLowerCase().includes(s)
+        ).slice(0, 40)
+          .map(p => ({ label: p.sunrackCode || p.serialNumber || '—', sub: p.genericName, value: p.sunrackCode || p.serialNumber || '' }));
+      case 'itemDescription':
+        return allProfiles.filter(p => p.itemDescription?.toLowerCase().includes(s) || p.genericName?.toLowerCase().includes(s)).slice(0, 40)
+          .map(p => ({ label: p.itemDescription || p.genericName, sub: p.genericName, value: p.itemDescription || '' }));
+      case 'material': {
+        const unique = [...new Set(allProfiles.map(p => p.material).filter(Boolean))];
+        return unique.filter(m => m.toLowerCase().includes(s)).map(m => ({ label: m, value: m }));
+      }
+      case 'uom': {
+        const unique = [...new Set(allProfiles.map(p => p.uom).filter(Boolean))];
+        return unique.filter(u => u.toLowerCase().includes(s)).map(u => ({ label: u, value: u }));
+      }
+      case 'designWeight':
+        return allProfiles.filter(p => p.designWeight != null && p.genericName?.toLowerCase().includes(s)).slice(0, 40)
+          .map(p => ({ label: String(p.designWeight), sub: p.genericName, value: String(p.designWeight) }));
+      case 'costPerPiece':
+        return allProfiles.filter(p => p.costPerPiece != null && p.genericName?.toLowerCase().includes(s)).slice(0, 40)
+          .map(p => ({ label: `₹${p.costPerPiece}`, sub: p.genericName, value: String(p.costPerPiece) }));
+      default:
+        return [];
+    }
+  };
+
+  const toggleFieldPicker = (field) => {
+    if (fieldPicker === field) {
+      setFieldPicker(null);
+      setFieldPickerSearch('');
+    } else {
+      setFieldPicker(field);
+      setFieldPickerSearch('');
+      setShowMasterDropdown(false);
+    }
+  };
+
+  const handleFieldPickerSelect = (field, value) => {
+    const setters = {
+      genericName: setGenericName,
+      itemCode: setItemCode,
+      itemDescription: setItemDescription,
+      material: setMaterial,
+      uom: setUom,
+      designWeight: setDesignWeight,
+      costPerPiece: setCostPerPiece,
+    };
+    setters[field]?.(value);
+    setFieldPicker(null);
+    setFieldPickerSearch('');
+  };
+
+  // ── Preview & Add ──────────────────────────────────────────────────────────
+
+  const canPreview = quantity && parseFloat(quantity) > 0 && length && parseFloat(length) > 0;
   const preview = canPreview
     ? calcItem({
-        material,
-        length,
-        quantity,
+        material, length, quantity,
         designWeight: parseFloat(designWeight) || 0,
         costPerPiece: parseFloat(costPerPiece) || 0,
         rateKgOverride: null,
@@ -405,17 +520,17 @@ function AddCustomItemModal({ isOpen, rates, sparePercent, onClose, onAdd }) {
 
     const newItem = calcItem({
       id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
-      profileId: null,
-      itemType: 'CUSTOM',
+      profileId: dbSelected?.id ?? null,
+      itemType: dbSelected ? dbSelected.itemType : 'CUSTOM',
+      profileImagePath: dbSelected?.profileImagePath ?? null,
       genericName: genericName.trim(),
       itemCode: itemCode.trim(),
       itemDescription: itemDescription.trim(),
       material,
+      uom,
       designWeight: parseFloat(designWeight) || 0,
       costPerPiece: parseFloat(costPerPiece) || 0,
       rateKgOverride: null,
-      uom: '',
-      profileImagePath: null,
       length: parseFloat(length),
       quantity: parseFloat(quantity),
     }, rates, sparePercent);
@@ -426,66 +541,226 @@ function AddCustomItemModal({ isOpen, rates, sparePercent, onClose, onAdd }) {
 
   if (!isOpen) return null;
 
+  const inputCls = 'w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent text-sm';
+
+  // Small "DB" badge shown next to each label in DB mode
+  const DbBadge = ({ field }) => mode !== 'db' ? null : (
+    <button
+      type="button"
+      onClick={() => toggleFieldPicker(field)}
+      className={`ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-bold transition-colors ${
+        fieldPicker === field ? 'bg-violet-500 text-white' : 'bg-violet-100 text-violet-600 hover:bg-violet-200'
+      }`}
+      title="Pick value from DB"
+    >
+      <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 7c0-1.657 3.582-3 8-3s8 1.343 8 3v3c0 1.657-3.582 3-8 3S4 11.657 4 10V7z"/>
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 10v4c0 1.657 3.582 3 8 3s8-1.343 8-3v-4"/>
+      </svg>
+      DB
+    </button>
+  );
+
+  // Inline dropdown shown below a field when its picker is open
+  const FieldPickerDropdown = ({ field }) => {
+    if (fieldPicker !== field) return null;
+    const options = getFieldOptions(field);
+    return (
+      <div className="absolute z-20 left-0 right-0 mt-1 bg-white border-2 border-violet-300 rounded-xl shadow-2xl">
+        <div className="p-2 border-b border-violet-100">
+          <input
+            type="text"
+            value={fieldPickerSearch}
+            onChange={e => setFieldPickerSearch(e.target.value)}
+            placeholder="Search..."
+            autoFocus
+            className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
+          />
+        </div>
+        <div className="max-h-40 overflow-y-auto">
+          {options.length === 0 ? (
+            <div className="px-4 py-4 text-center text-sm text-gray-400">No options found</div>
+          ) : (
+            options.map((opt, i) => (
+              <button
+                key={i}
+                type="button"
+                onMouseDown={() => handleFieldPickerSelect(field, opt.value)}
+                className="w-full text-left px-4 py-2 hover:bg-violet-50 border-b border-gray-100 last:border-0 transition-colors"
+              >
+                <div className="text-sm font-semibold text-gray-800">{opt.label}</div>
+                {opt.sub && <div className="text-xs text-gray-400 truncate">{opt.sub}</div>}
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="bg-gradient-to-r from-violet-500 to-purple-600 px-6 py-4 rounded-t-2xl">
-          <h2 className="text-lg font-bold text-white">Add Custom Item</h2>
-          <p className="text-violet-100 text-sm mt-0.5">Enter all details manually</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-white">Add Custom Item</h2>
+              <p className="text-violet-100 text-sm mt-0.5">Enter details manually or fill from DB</p>
+            </div>
+            <div className="flex items-center gap-2 bg-white/20 rounded-xl p-1">
+              <button
+                type="button"
+                onClick={() => handleModeToggle('manual')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${mode === 'manual' ? 'bg-white text-violet-700 shadow' : 'text-white/80 hover:text-white'}`}
+              >
+                Manual
+              </button>
+              <button
+                type="button"
+                onClick={() => handleModeToggle('db')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${mode === 'db' ? 'bg-white text-violet-700 shadow' : 'text-white/80 hover:text-white'}`}
+              >
+                From DB
+              </button>
+            </div>
+          </div>
         </div>
 
         <div className="px-6 py-5 space-y-4">
+
+          {/* Master DB picker — fill all fields at once */}
+          {mode === 'db' && (
+            <div className="space-y-3 pb-3 border-b-2 border-violet-100">
+              <p className="text-xs text-violet-600 font-semibold">
+                Use the catalog picker below to fill all fields at once, or click the <span className="bg-violet-100 text-violet-600 px-1 py-0.5 rounded font-bold">DB</span> badge next to any field label to fill just that field.
+              </p>
+              <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1 w-fit">
+                {[{ label: 'Profile', value: 'PROFILE' }, { label: 'Fastener', value: 'FASTENER' }].map(({ label, value }) => (
+                  <button key={value} type="button"
+                    onClick={() => { setDbTypeFilter(value); setDbSelected(null); setDbSearch(''); }}
+                    className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${
+                      dbTypeFilter === value
+                        ? value === 'PROFILE' ? 'bg-green-500 text-white shadow-sm' : 'bg-blue-500 text-white shadow-sm'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >{label}</button>
+                ))}
+              </div>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => { setShowMasterDropdown(p => !p); setFieldPicker(null); }}
+                  className={`w-full flex items-center justify-between px-4 py-2.5 border-2 rounded-xl text-sm text-left transition-colors focus:outline-none focus:ring-2 focus:ring-violet-400 ${showMasterDropdown ? 'border-violet-400' : 'border-gray-200 hover:border-violet-300'}`}
+                >
+                  <span className={dbSelected ? 'text-gray-900 font-semibold' : 'text-gray-400'}>
+                    {dbSelected ? dbSelected.genericName : `Search ${dbTypeFilter === 'PROFILE' ? 'profiles' : 'fasteners'}…`}
+                  </span>
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {showMasterDropdown && (
+                  <div className="absolute z-20 left-0 right-0 mt-1 bg-white border-2 border-violet-300 rounded-xl shadow-2xl">
+                    <div className="p-2 border-b border-violet-100">
+                      <input
+                        type="text"
+                        value={dbSearch}
+                        onChange={e => setDbSearch(e.target.value)}
+                        placeholder="Search by name or description…"
+                        autoFocus
+                        className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
+                      />
+                    </div>
+                    <div className="max-h-48 overflow-y-auto">
+                      {filteredProfiles.length === 0 ? (
+                        <div className="px-4 py-4 text-center text-sm text-gray-400">No items found</div>
+                      ) : filteredProfiles.map(p => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onMouseDown={() => handleMasterDbSelect(p)}
+                          className="w-full text-left px-4 py-2.5 hover:bg-violet-50 border-b border-gray-100 last:border-0 transition-colors"
+                        >
+                          <div className="text-sm font-semibold text-gray-800">{p.genericName}</div>
+                          <div className="text-xs text-gray-400 truncate">{p.itemDescription || p.sunrackCode || ''}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Item Name */}
-          <div>
+          <div className="relative">
             <label className="block text-sm font-bold text-gray-700 mb-1.5">
               Item Name <span className="text-red-500">*</span>
+              <DbBadge field="genericName" />
             </label>
             <input
               type="text"
               value={genericName}
               onChange={e => setGenericName(e.target.value)}
+              onFocus={() => setFieldPicker(null)}
               placeholder="e.g. Custom Bracket"
-              className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent text-sm"
+              className={inputCls}
             />
+            <FieldPickerDropdown field="genericName" />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             {/* Sunrack Code */}
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-1.5">Sunrack Code</label>
+            <div className="relative">
+              <label className="block text-sm font-bold text-gray-700 mb-1.5">
+                Sunrack Code
+                <DbBadge field="itemCode" />
+              </label>
               <input
                 type="text"
                 value={itemCode}
                 onChange={e => setItemCode(e.target.value)}
+                onFocus={() => setFieldPicker(null)}
                 placeholder="e.g. SR-001"
-                className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent text-sm"
+                className={inputCls}
               />
+              <FieldPickerDropdown field="itemCode" />
             </div>
 
             {/* Material */}
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-1.5">Material <span className="text-red-500">*</span></label>
+            <div className="relative">
+              <label className="block text-sm font-bold text-gray-700 mb-1.5">
+                Material <span className="text-red-500">*</span>
+                <DbBadge field="material" />
+              </label>
               <input
                 type="text"
                 value={material}
                 onChange={e => setMaterial(e.target.value)}
+                onFocus={() => setFieldPicker(null)}
                 placeholder="e.g. SS 304"
-                className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent text-sm"
+                className={inputCls}
               />
+              <FieldPickerDropdown field="material" />
             </div>
           </div>
 
           {/* Item Description */}
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1.5">Item Description</label>
+          <div className="relative">
+            <label className="block text-sm font-bold text-gray-700 mb-1.5">
+              Item Description
+              <DbBadge field="itemDescription" />
+            </label>
             <input
               type="text"
               value={itemDescription}
               onChange={e => setItemDescription(e.target.value)}
+              onFocus={() => setFieldPicker(null)}
               placeholder="e.g. Custom bracket for special mounting"
-              className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent text-sm"
+              className={inputCls}
             />
+            <FieldPickerDropdown field="itemDescription" />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -498,8 +773,9 @@ function AddCustomItemModal({ isOpen, rates, sparePercent, onClose, onAdd }) {
                 step="1"
                 value={length}
                 onChange={e => setLength(e.target.value)}
+                onFocus={() => setFieldPicker(null)}
                 placeholder="e.g. 6000"
-                className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent text-sm"
+                className={inputCls}
               />
             </div>
 
@@ -512,41 +788,71 @@ function AddCustomItemModal({ isOpen, rates, sparePercent, onClose, onAdd }) {
                 step="1"
                 value={quantity}
                 onChange={e => setQuantity(e.target.value)}
+                onFocus={() => setFieldPicker(null)}
                 placeholder="e.g. 10"
-                className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent text-sm"
+                className={inputCls}
               />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             {/* Wt/RM */}
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-1.5">Wt/RM (kg/m)</label>
+            <div className="relative">
+              <label className="block text-sm font-bold text-gray-700 mb-1.5">
+                Wt/RM (kg/m)
+                <DbBadge field="designWeight" />
+              </label>
               <input
                 type="number"
                 min="0"
                 step="0.0001"
                 value={designWeight}
                 onChange={e => setDesignWeight(e.target.value)}
+                onFocus={() => setFieldPicker(null)}
                 placeholder="e.g. 1.2345"
-                className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent text-sm"
+                className={inputCls}
               />
+              <FieldPickerDropdown field="designWeight" />
             </div>
 
             {/* Rate/pc */}
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-1.5">Rate/Piece (₹)</label>
+            <div className="relative">
+              <label className="block text-sm font-bold text-gray-700 mb-1.5">
+                Rate/Piece (₹)
+                <DbBadge field="costPerPiece" />
+              </label>
               <input
                 type="number"
                 min="0"
                 step="0.01"
                 value={costPerPiece}
                 onChange={e => setCostPerPiece(e.target.value)}
+                onFocus={() => setFieldPicker(null)}
                 placeholder="e.g. 25.00"
                 className="w-full px-4 py-2.5 border-2 border-blue-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent text-sm bg-blue-50"
               />
+              <FieldPickerDropdown field="costPerPiece" />
             </div>
           </div>
+
+          {/* UoM (DB mode only) */}
+          {mode === 'db' && (
+            <div className="relative">
+              <label className="block text-sm font-bold text-gray-700 mb-1.5">
+                UoM
+                <DbBadge field="uom" />
+              </label>
+              <input
+                type="text"
+                value={uom}
+                onChange={e => setUom(e.target.value)}
+                onFocus={() => setFieldPicker(null)}
+                placeholder="e.g. nos"
+                className={inputCls}
+              />
+              <FieldPickerDropdown field="uom" />
+            </div>
+          )}
 
           {/* Live preview */}
           {preview && (
@@ -591,7 +897,7 @@ function AddCustomItemModal({ isOpen, rates, sparePercent, onClose, onAdd }) {
             onClick={handleAdd}
             className="flex-1 py-2.5 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl text-sm font-bold hover:from-violet-600 hover:to-purple-700 transition-all shadow-md"
           >
-            Add Custom Item
+            Add Item
           </button>
         </div>
       </div>
@@ -1043,7 +1349,7 @@ export default function CustomBOMPage() {
   const [rates, setRates] = useState({ al6063Rate: 320, giRate: 70, hdgRate: 125, magnelisRate: 125 });
   const [buildings, setBuildings] = useState([]);
   const [activeBuilding, setActiveBuilding] = useState(null);
-  const [showAddModal, setShowAddModal] = useState(false);
+  // const [showAddModal, setShowAddModal] = useState(false);
   const [showAddCustomModal, setShowAddCustomModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -1683,7 +1989,7 @@ export default function CustomBOMPage() {
 
           {/* Add Item Buttons */}
           <div className="p-4 border-t border-yellow-100 flex items-center gap-3">
-            <button
+            {/* <button
               onClick={() => setShowAddModal(true)}
               className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-yellow-500 to-amber-500 text-white text-sm font-bold rounded-xl hover:from-yellow-600 hover:to-amber-600 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
             >
@@ -1691,7 +1997,7 @@ export default function CustomBOMPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4"/>
               </svg>
               Add Item from DB
-            </button>
+            </button> */}
             <button
               onClick={() => setShowAddCustomModal(true)}
               className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-violet-500 to-purple-600 text-white text-sm font-bold rounded-xl hover:from-violet-600 hover:to-purple-700 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
@@ -1810,15 +2116,14 @@ export default function CustomBOMPage() {
         </div>
       </div>
 
-      {/* Add Item Modal */}
-      <AddItemModal
+      {/* <AddItemModal
         isOpen={showAddModal}
         profiles={profiles}
         rates={rates}
         sparePercent={sparePercent}
         onClose={() => setShowAddModal(false)}
         onAdd={handleAddItem}
-      />
+      /> */}
 
       {/* Edit Item Modal */}
       <EditItemModal
@@ -1835,6 +2140,7 @@ export default function CustomBOMPage() {
       {/* Add Custom Item Modal */}
       <AddCustomItemModal
         isOpen={showAddCustomModal}
+        profiles={profiles}
         rates={rates}
         sparePercent={sparePercent}
         onClose={() => setShowAddCustomModal(false)}
