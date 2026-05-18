@@ -17,7 +17,14 @@ export default function WalkwayBOMPrintPreview() {
     const raw = sessionStorage.getItem('walkwayBomPrint');
     if (!raw) { navigate('/walkway-bom'); return; }
     try {
-      setData(JSON.parse(raw));
+      const parsed = JSON.parse(raw);
+      setData(parsed);
+      if (parsed.autoPrint) {
+        setTimeout(() => window.print(), 500);
+        const handleAfterPrint = () => navigate('/walkway-bom');
+        window.addEventListener('afterprint', handleAfterPrint);
+        return () => window.removeEventListener('afterprint', handleAfterPrint);
+      }
     } catch {
       navigate('/walkway-bom');
     }

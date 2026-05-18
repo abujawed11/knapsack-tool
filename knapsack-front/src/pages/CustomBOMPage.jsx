@@ -1496,6 +1496,7 @@ export default function CustomBOMPage() {
       sparePercent,
       moduleWp,
       printedBy: user?.username || 'Unknown',
+      autoPrint: true,
     }));
     setPrintModalOpen(false);
     navigate('/custom-bom/print-preview');

@@ -184,7 +184,14 @@ export default function CustomBOMPrintPreview() {
     const raw = sessionStorage.getItem('customBomPrint');
     if (!raw) { navigate('/custom-bom/app'); return; }
     try {
-      setData(JSON.parse(raw));
+      const parsed = JSON.parse(raw);
+      setData(parsed);
+      if (parsed.autoPrint) {
+        setTimeout(() => window.print(), 500);
+        const handleAfterPrint = () => navigate('/custom-bom/app');
+        window.addEventListener('afterprint', handleAfterPrint);
+        return () => window.removeEventListener('afterprint', handleAfterPrint);
+      }
     } catch {
       navigate('/custom-bom/app');
     }
@@ -261,7 +268,7 @@ export default function CustomBOMPrintPreview() {
                 <>
                   <p>Project: <strong>{project.name}</strong></p>
                   {project.clientName && <p>Client: <strong>{project.clientName}</strong></p>}
-                  {project.projectId && <p>ID: <strong>{project.projectId}</strong>}</p>}
+                  {project.projectId && <p>ID: <strong>{project.projectId}</strong></p>}
                 </>
               )}
               {moduleWp > 0 && <p>Module Wp: <strong>{moduleWp} Wp</strong></p>}
