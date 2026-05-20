@@ -326,18 +326,15 @@ export default function CustomBOMPrintPreview() {
             <div>
               <h1 className="text-xl font-black text-gray-900 tracking-tight">CUSTOM BILL OF MATERIALS</h1>
               <p className="text-xs text-gray-500 mt-0.5 mb-2">Custom Solar BOM</p>
-              <div className="text-xs text-gray-600 space-y-0.5">
-                <p>Date: <strong>{date}</strong></p>
-                {project && (
-                  <>
-                    <p>Project: <strong>{project.name}</strong></p>
-                    {project.clientName && <p>Client: <strong>{project.clientName}</strong></p>}
-                    {project.projectId && <p>ID: <strong>{project.projectId}</strong></p>}
-                  </>
-                )}
-                {moduleWp > 0 && <p>Module Wp: <strong>{moduleWp} Wp</strong></p>}
-                <p>Spare: <strong>{sparePercent}%</strong></p>
-                {printedBy && <p>Printed by: <strong>{printedBy}</strong></p>}
+              <div className="text-xs text-gray-600 grid grid-cols-3 gap-x-6 gap-y-0.5 mt-1">
+                {/* <p>Date: <strong>{date}</strong></p> */}
+                {project?.name      && <p>Project: <strong>{project.name}</strong></p>}
+                {project?.projectId  && <p>Project ID: <strong>{project.projectId}</strong></p>}
+                {project?.clientName && <p>Client: <strong>{project.clientName}</strong></p>}
+                {/* {project?.projectId  && <p>ID: <strong>{project.projectId}</strong></p>} */}
+                {/* {moduleWp > 0        && <p>Module Wp: <strong>{moduleWp} Wp</strong></p>} */}
+                {/* <p>Spare: <strong>{sparePercent}%</strong></p> */}
+                {/* {printedBy           && <p>Printed by: <strong>{printedBy}</strong></p>} */}
               </div>
             </div>
             {/* Right: logo only */}
