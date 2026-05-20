@@ -38,6 +38,105 @@ export default function WalkwayBOMPrintPreview() {
 
   return (
     <>
+      <style>{`
+        @page {
+          size: A4 portrait;
+          margin-top: 1cm;
+          margin-right: 0.3cm;
+          margin-left: 0.3cm;
+          margin-bottom: 0.4in;
+        }
+        @media print {
+          html, body { margin: 0 !important; padding: 0 !important; }
+          .no-print { display: none !important; }
+          .print-page {
+            max-width: 100% !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            font-size: 8.5px !important;
+          }
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          table { width: 100% !important; }
+
+          .watermark-layer {
+            position: fixed !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            pointer-events: none !important;
+            z-index: 999 !important;
+            width: 100% !important;
+            height: 100% !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+          }
+          .watermark-layer img {
+            width: 60% !important;
+            max-width: 700px !important;
+            height: auto !important;
+            opacity: 0.12 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .company-logo {
+            width: 6cm !important;
+            height: auto !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            display: block !important;
+            margin-left: auto !important;
+          }
+
+          /* Make body cell backgrounds transparent so watermark shows through */
+          .print-page table td {
+            background-color: rgba(255, 255, 255, 0) !important;
+          }
+          /* Restore dark header rows */
+          .print-page table .bg-gray-800,
+          .print-page table tr.bg-gray-800 td,
+          .print-page table tr.bg-gray-800 th {
+            background-color: rgba(31, 41, 55, 1) !important;
+          }
+          .print-page table .bg-gray-600,
+          .print-page table tr.bg-gray-600 td,
+          .print-page table tr.bg-gray-600 th {
+            background-color: rgba(75, 85, 99, 1) !important;
+          }
+          /* Section title bar */
+          .print-page .bg-gray-100 {
+            background-color: rgba(243, 244, 246, 0.9) !important;
+          }
+        }
+        @media screen {
+          .watermark-layer {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          .watermark-layer img {
+            width: 50%;
+            height: auto;
+            opacity: 0.08;
+          }
+          .company-logo {
+            width: 180px;
+            height: auto;
+            display: block;
+            margin-left: auto;
+          }
+        }
+      `}</style>
+
       {/* Watermark - fixed position repeats on every printed page */}
       <div className="watermark-layer">
         <img src="/watermark0.png" alt="" />
@@ -185,102 +284,6 @@ export default function WalkwayBOMPrintPreview() {
         )}
       </div>
 
-      {/* Print-specific styles */}
-      <style>{`
-        @page {
-          size: A4 portrait;
-          margin: 10mm 12mm;
-        }
-        @media print {
-          html, body { margin: 0 !important; padding: 0 !important; }
-          .no-print { display: none !important; }
-          .print-page {
-            max-width: 100% !important;
-            width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            font-size: 8.5px !important;
-          }
-          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          table { width: 100% !important; }
-
-          .watermark-layer {
-            position: fixed !important;
-            top: 50% !important;
-            left: 50% !important;
-            transform: translate(-50%, -50%) !important;
-            pointer-events: none !important;
-            z-index: 999 !important;
-            width: 100vw !important;
-            height: 100vh !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-          }
-          .watermark-layer img {
-            width: 60% !important;
-            max-width: 700px !important;
-            height: auto !important;
-            opacity: 0.12 !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          .company-logo {
-            width: 6cm !important;
-            height: auto !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-            display: block !important;
-            margin-left: auto !important;
-          }
-
-          /* Make body cell backgrounds transparent so watermark shows through */
-          .print-page table td {
-            background-color: rgba(255, 255, 255, 0) !important;
-          }
-          /* Restore dark header rows */
-          .print-page table .bg-gray-800,
-          .print-page table tr.bg-gray-800 td,
-          .print-page table tr.bg-gray-800 th {
-            background-color: rgba(31, 41, 55, 1) !important;
-          }
-          .print-page table .bg-gray-600,
-          .print-page table tr.bg-gray-600 td,
-          .print-page table tr.bg-gray-600 th {
-            background-color: rgba(75, 85, 99, 1) !important;
-          }
-          /* Section title bar */
-          .print-page .bg-gray-100 {
-            background-color: rgba(243, 244, 246, 0.9) !important;
-          }
-        }
-        @media screen {
-          .watermark-layer {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            pointer-events: none;
-            z-index: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-          }
-          .watermark-layer img {
-            width: 50%;
-            height: auto;
-            opacity: 0.08;
-          }
-          .company-logo {
-            width: 180px;
-            height: auto;
-            display: block;
-            margin-left: auto;
-          }
-        }
-      `}</style>
     </>
   );
 }
