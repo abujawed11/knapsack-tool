@@ -38,6 +38,11 @@ export default function WalkwayBOMPrintPreview() {
 
   return (
     <>
+      {/* Watermark - fixed position repeats on every printed page */}
+      <div className="watermark-layer">
+        <img src="/watermark0.png" alt="" />
+      </div>
+
       {/* Print toolbar — hidden when printing */}
       <div className="no-print bg-gray-800 text-white px-6 py-3 flex items-center justify-between sticky top-0 z-50">
         <span className="font-semibold text-sm">Print Preview — Walkway BOM</span>
@@ -60,21 +65,25 @@ export default function WalkwayBOMPrintPreview() {
       <div className="print-page bg-white min-h-screen px-10 py-8 text-gray-900 font-sans text-sm max-w-[1050px] mx-auto">
         {/* ── Document header ── */}
         <div className="border-b-2 border-gray-800 pb-4 mb-6">
-          <div className="flex items-start justify-between">
+          <div className="flex items-start justify-between gap-6">
+            {/* Left: title + project info grid */}
             <div>
               <h1 className="text-xl font-black text-gray-900 tracking-tight">WALKWAY BILL OF MATERIALS</h1>
-              <p className="text-xs text-gray-500 mt-0.5">Solar Rooftop Walkway System</p>
-            </div>
-            <div className="text-right text-xs text-gray-600 space-y-0.5">
-              <p>Date: <strong>{date}</strong></p>
+              <p className="text-xs text-gray-500 mt-0.5 mb-2">Solar Rooftop Walkway System</p>
               {project && (
-                <>
-                  <p>Project: <strong>{project.name}</strong></p>
-                  <p>Client: <strong>{project.clientName}</strong></p>
-                  <p>ID: <strong>{project.projectId}</strong></p>
-                </>
+                <div className="text-xs text-gray-600 grid grid-cols-3 gap-x-6 gap-y-0.5 mt-1">
+                  {project.name       && <p>Project: <strong>{project.name}</strong></p>}
+                  {project.projectId  && <p>Project ID: <strong>{project.projectId}</strong></p>}
+                  {project.clientName && <p>Client: <strong>{project.clientName}</strong></p>}
+                </div>
               )}
             </div>
+            {/* Right: logo only */}
+            <img
+              src="/white_back_photo.svg"
+              alt="Company Logo"
+              className="company-logo"
+            />
           </div>
 
           {/* Settings summary */}
@@ -194,6 +203,63 @@ export default function WalkwayBOMPrintPreview() {
           }
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           table { width: 100% !important; }
+
+          .watermark-layer {
+            position: fixed !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            pointer-events: none !important;
+            z-index: 999 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            mix-blend-mode: multiply !important;
+          }
+          .watermark-layer img {
+            width: 60% !important;
+            max-width: 700px !important;
+            height: auto !important;
+            opacity: 0.15 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .company-logo {
+            width: 6cm !important;
+            height: auto !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            display: block !important;
+            margin-left: auto !important;
+          }
+        }
+        @media screen {
+          .watermark-layer {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          .watermark-layer img {
+            width: 50%;
+            height: auto;
+            opacity: 0.08;
+          }
+          .company-logo {
+            width: 180px;
+            height: auto;
+            display: block;
+            margin-left: auto;
+          }
         }
       `}</style>
     </>
