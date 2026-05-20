@@ -216,13 +216,12 @@ export default function WalkwayBOMPrintPreview() {
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
-            mix-blend-mode: multiply !important;
           }
           .watermark-layer img {
             width: 60% !important;
             max-width: 700px !important;
             height: auto !important;
-            opacity: 0.15 !important;
+            opacity: 0.12 !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
@@ -233,6 +232,26 @@ export default function WalkwayBOMPrintPreview() {
             print-color-adjust: exact !important;
             display: block !important;
             margin-left: auto !important;
+          }
+
+          /* Make body cell backgrounds transparent so watermark shows through */
+          .print-page table td {
+            background-color: rgba(255, 255, 255, 0) !important;
+          }
+          /* Restore dark header rows */
+          .print-page table .bg-gray-800,
+          .print-page table tr.bg-gray-800 td,
+          .print-page table tr.bg-gray-800 th {
+            background-color: rgba(31, 41, 55, 1) !important;
+          }
+          .print-page table .bg-gray-600,
+          .print-page table tr.bg-gray-600 td,
+          .print-page table tr.bg-gray-600 th {
+            background-color: rgba(75, 85, 99, 1) !important;
+          }
+          /* Section title bar */
+          .print-page .bg-gray-100 {
+            background-color: rgba(243, 244, 246, 0.9) !important;
           }
         }
         @media screen {

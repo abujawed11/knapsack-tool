@@ -237,13 +237,12 @@ export default function CustomBOMPrintPreview() {
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
-            mix-blend-mode: multiply !important;
           }
           .watermark-layer img {
             width: 60% !important;
             max-width: 700px !important;
             height: auto !important;
-            opacity: 0.15 !important;
+            opacity: 0.12 !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
@@ -255,6 +254,20 @@ export default function CustomBOMPrintPreview() {
             display: block !important;
             margin-left: auto !important;
             margin-bottom: 4px !important;
+          }
+
+          /* Make body cell backgrounds transparent so watermark shows through */
+          .print-content table td {
+            background-color: rgba(255, 255, 255, 0) !important;
+          }
+          /* Restore yellow header rows */
+          .print-content table .bg-yellow-400,
+          .print-content table tr.bg-yellow-400 th {
+            background-color: rgba(251, 191, 36, 1) !important;
+          }
+          /* Restore separator columns */
+          .print-content table .bg-gray-200 {
+            background-color: rgba(229, 231, 235, 1) !important;
           }
         }
         @media screen {

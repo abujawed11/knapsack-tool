@@ -324,14 +324,13 @@ export default function BOMPrintPreview() {
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
-            mix-blend-mode: multiply !important;
           }
 
           .watermark-layer img {
             width: 60% !important;
             max-width: 700px !important;
             height: auto !important;
-            opacity: 0.15 !important;
+            opacity: 0.12 !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
