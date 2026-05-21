@@ -462,7 +462,7 @@ const EMPTY_OVERRIDES = { horizontal: {}, vertical: {} };
 export default function WalkwayBOMPage() {
   const navigate  = useNavigate();
   const location  = useLocation();
-  const { can }   = useAuth();
+  const { can, user } = useAuth();
   // When navigated with { state: { resetBOM: true } }, ignore any saved BOM data
   const resetBOM  = location.state?.resetBOM === true;
 
@@ -701,7 +701,7 @@ export default function WalkwayBOMPage() {
   };
 
   const handlePrintPreview = (printSettings) => {
-    sessionStorage.setItem('walkwayBomPrint', JSON.stringify({ bom: displayBom, settings, project, changeLog, printSettings, autoPrint: true }));
+    sessionStorage.setItem('walkwayBomPrint', JSON.stringify({ bom: displayBom, settings, project, changeLog, printSettings, printedBy: user?.username || 'Unknown', autoPrint: true }));
     navigate('/walkway-bom/print-preview');
   };
 
