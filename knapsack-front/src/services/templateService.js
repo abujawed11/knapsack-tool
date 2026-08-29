@@ -1,0 +1,156 @@
+// src/services/templateService.js
+// Template service for fetching BOM variation templates
+
+import { API_URL } from './config';
+
+// Maps old/legacy longRailVariation values (stored in DB before template system) to current template names
+const LEGACY_NAME_MAP = {
+  'U Cleat Long Rail': 'U Cleat Long Rail - Regular',
+  'BOM for U Cleat Long Rail': 'U Cleat Long Rail - Regular',
+  'Cleat Long Rail': 'U Cleat Long Rail - Regular',
+};
+
+/**
+ * Fetch variation template from database
+ * @param {string} variationName - e.g. "U Cleat Long Rail - Regular"
+ * @returns {Promise<Object|null>} Template with items and defaultNotes, or null if not found
+ */
+export async function getVariationTemplate(variationName) {
+  if (!variationName) {
+    console.warn('No variation name provided to getVariationTemplate');
+    return null;
+  }
+
+  // Remap legacy variation names to current template names
+  const resolvedName = LEGACY_NAME_MAP[variationName] ?? variationName;
+
+  const token = localStorage.getItem('token');
+  const headers = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  try {
+    const response = await fetch(
+      `${API_URL}/api/bom-templates/${encodeURIComponent(resolvedName)}`,
+      { headers }
+    );
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        console.warn(`Template not found for variation: ${resolvedName}`);
+        return null;
+      }
+      throw new Error(`Failed to fetch template: ${response.status} ${response.statusText}`);
+    }
+
+    const template = await response.json();
+    // console.log(`✅ Template loaded for variation: ${variationName}`, template);
+    return template;
+  } catch (error) {
+    console.error('Error fetching template:', error);
+    return null;
+  }
+}
+
+/**
+ * Update variation template default notes (MANAGER only)
+ * @param {string} variationName
+ * @param {Array<string>|Array<{noteOrder:number,noteText:string}>} defaultNotes
+ * @returns {Promise<{variationName:string, defaultNotes:Array<{noteOrder:number,noteText:string}>} | null>}
+ */
+export async function updateVariationTemplateDefaultNotes(variationName, defaultNotes) {
+  if (!variationName) {
+    console.warn('No variation name provided to updateVariationTemplateDefaultNotes');
+    return null;
+  }
+
+  const token = localStorage.getItem('token');
+  const headers = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  try {
+    const response = await fetch(
+      `${API_URL}/api/bom-templates/${encodeURIComponent(variationName)}/default-notes`,
+      {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ defaultNotes }),
+      }
+    );
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '');
+      throw new Error(text || `Failed to update template default notes (HTTP ${response.status})`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error updating template default notes:', error);
+    return null;
+  }
+}
+
+/**
+ * Fetch all available variation templates
+ * @returns {Promise<Array>} Array of all templates
+ */
+export async function getAllVariationTemplates() {
+  const token = localStorage.getItem('token');
+  const headers = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  try {
+    const response = await fetch(
+      `${API_URL}/api/bom-templates`,
+      { headers }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch templates: ${response.status} ${response.statusText}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching all templates:', error);
+    return [];
+  }
+}
+
+/**
+ * Format item description based on template item data
+ * Applies M8/M10 length formatting for fasteners
+ *
+ * @param {Object} vItem - Variation Item from DB (with nested sunrackProfile or fastener)
+ * @returns {string} Formatted item description
+ */
+export function formatItemDescription(vItem) {
+  // Get the item data from either sunrackProfile or fastener
+  const item = vItem.sunrackProfile || vItem.fastener;
+
+  // Description comes from override OR item generic name
+  const description = vItem.displayOverride || item?.genericName || '';
+
+  // Length comes from item standard length
+  const length = item?.standardLength;
+
+  // Rule: M8/M10 fasteners → Add "x{length}" after M8/M10
+  if (length && (description.startsWith('M8 ') || description.startsWith('M10 '))) {
+    const prefix = description.startsWith('M8 ') ? 'M8' : 'M10';
+    const restOfName = description.substring(prefix.length + 1); // Remove "M8 " or "M10 "
+    return `${prefix}x${length} ${restOfName}`;
+  }
+
+  // All other items → Use description as-is
+  return description;
+}

@@ -1,4 +1,4 @@
-// src/App.jsx
+// src/AppAPI.jsx - API-integrated version
 import { useState, useEffect } from 'react';
 import Header from './components/Header';
 import TabBar from './components/TabBar';
@@ -7,43 +7,111 @@ import RailTable from './components/RailTable';
 import CreateTabDialog from './components/CreateTabDialog';
 import CloseTabConfirmDialog from './components/CloseTabConfirmDialog';
 import RenameTabDialog from './components/RenameTabDialog';
+import CreateBOMButton from './components/BOM/CreateBOMButton';
+import { projectAPI, tabAPI } from './services/api';
+import { useAuth } from './context/AuthContext';
 import {
   loadTabs,
-  saveTabs,
   createTab,
   deleteTab,
-  updateTab,
+  refreshTab,
   switchTab,
   getActiveTab,
   renameTab,
-  duplicateTab
-} from './lib/tabStorage';
+  duplicateTab,
+  initializeProject,
+  getCurrentProjectId
+} from './lib/tabStorageAPI';
 
 export default function App() {
-  // Load tabs data
-  const [tabsData, setTabsData] = useState(() => loadTabs());
+  const { canEditField, appDefaults } = useAuth();
+
+  // State
+  const [tabsData, setTabsData] = useState({ tabs: [], activeTabId: null });
+  const [projectName, setProjectName] = useState('Untitled Project');
+  const [clientName, setClientName] = useState('');
+  const [projectId, setProjectId] = useState('');
+  const [longRailVariation, setLongRailVariation] = useState('');
+  const [moduleWp, setModuleWp] = useState(590);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [tabToClose, setTabToClose] = useState(null);
   const [tabToRename, setTabToRename] = useState(null);
+  const [toast, setToast] = useState(null);
+
+  const showToast = (message) => {
+    setToast({ id: Date.now(), message });
+    setTimeout(() => setToast(null), 3500);
+  };
+
+  const revertTabFromServer = async (tabId) => {
+    try {
+      const refreshed = await refreshTab(tabsData, tabId);
+      setTabsData(refreshed);
+    } catch (e) {
+      console.error('Failed to refresh tab from server:', e);
+    }
+  };
 
   // Get active tab
   const activeTab = getActiveTab(tabsData);
 
-  // Save tabs whenever they change
+  // Initialize: Load project and tabs
   useEffect(() => {
-    saveTabs(tabsData);
-  }, [tabsData]);
+    async function initialize() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Initialize project (create or get existing)
+        const project = await initializeProject();
+        setProjectName(project.name);
+        setClientName(project.clientName || '');
+        setProjectId(project.projectId || '');
+        setLongRailVariation(project.longRailVariation || '');
+        const adminDefault = appDefaults?.bomDefaults?.moduleWp;
+        const resolvedModuleWp = adminDefault != null ? adminDefault : (project.moduleWp != null ? Number(project.moduleWp) : 590);
+        setModuleWp(resolvedModuleWp);
+
+        // Load tabs, then apply appDefaults.tabDefaults on top so admin changes take effect immediately
+        const loadedTabsData = await loadTabs();
+        const tabDefaultOverrides = appDefaults?.tabDefaults ?? {};
+        const mergedTabsData = {
+          ...loadedTabsData,
+          tabs: loadedTabsData.tabs.map(tab => ({
+            ...tab,
+            settings: { ...tab.settings, ...tabDefaultOverrides }
+          }))
+        };
+        setTabsData(mergedTabsData);
+      } catch (err) {
+        console.error('Failed to initialize:', err);
+        setError(err.message || 'Failed to load data from server');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    initialize();
+  }, []);
 
   // Tab operations
   const handleTabSwitch = (tabId) => {
     setTabsData(switchTab(tabsData, tabId));
   };
 
-  const handleTabCreate = (tabName) => {
-    setTabsData(createTab(tabsData, tabName));
-    setShowCreateDialog(false);
+  const handleTabCreate = async (tabName) => {
+    try {
+      const newTabsData = await createTab(tabsData, tabName, appDefaults);
+      setTabsData(newTabsData);
+      setShowCreateDialog(false);
+    } catch (err) {
+      console.error('Failed to create tab:', err);
+      alert('Failed to create tab: ' + err.message);
+    }
   };
 
   const handleTabCloseRequest = (tab) => {
@@ -56,10 +124,16 @@ export default function App() {
     setShowCloseConfirm(true);
   };
 
-  const confirmCloseTab = () => {
-    setTabsData(deleteTab(tabsData, tabToClose.id));
-    setShowCloseConfirm(false);
-    setTabToClose(null);
+  const confirmCloseTab = async () => {
+    try {
+      const newTabsData = await deleteTab(tabsData, tabToClose.id);
+      setTabsData(newTabsData);
+      setShowCloseConfirm(false);
+      setTabToClose(null);
+    } catch (err) {
+      console.error('Failed to delete tab:', err);
+      alert('Failed to delete tab: ' + err.message);
+    }
   };
 
   const handleTabRenameRequest = (tab) => {
@@ -67,31 +141,142 @@ export default function App() {
     setShowRenameDialog(true);
   };
 
-  const handleTabRename = (newName) => {
-    setTabsData(renameTab(tabsData, tabToRename.id, newName));
-    setShowRenameDialog(false);
-    setTabToRename(null);
+  const handleTabRename = async (newName) => {
+    try {
+      const newTabsData = await renameTab(tabsData, tabToRename.id, newName);
+      setTabsData(newTabsData);
+      setShowRenameDialog(false);
+      setTabToRename(null);
+    } catch (err) {
+      console.error('Failed to rename tab:', err);
+      alert('Failed to rename tab: ' + err.message);
+    }
   };
 
-  const handleTabDuplicate = (tab) => {
-    setTabsData(duplicateTab(tabsData, tab.id));
+  const handleTabDuplicate = async (tab) => {
+    try {
+      const newTabsData = await duplicateTab(tabsData, tab.id);
+      setTabsData(newTabsData);
+    } catch (err) {
+      console.error('Failed to duplicate tab:', err);
+      alert('Failed to duplicate tab: ' + err.message);
+    }
+  };
+
+  // Update project name
+  const handleProjectNameChange = async (newName) => {
+    try {
+      setProjectName(newName);
+      const currentProjectId = getCurrentProjectId();
+      if (currentProjectId) {
+        await projectAPI.update(currentProjectId, { name: newName });
+      }
+    } catch (err) {
+      console.error('Failed to update project name:', err);
+      // Don't show error to user, just log it
+    }
+  };
+
+  // Update client name
+  const handleClientNameChange = async (newClientName) => {
+    try {
+      setClientName(newClientName);
+      const currentProjectId = getCurrentProjectId();
+      if (currentProjectId) {
+        await projectAPI.update(currentProjectId, { clientName: newClientName });
+      }
+    } catch (err) {
+      console.error('Failed to update client name:', err);
+    }
+  };
+
+  // Update project ID
+  const handleProjectIdChange = async (newProjectId) => {
+    try {
+      setProjectId(newProjectId);
+      const currentProjectId = getCurrentProjectId();
+      if (currentProjectId) {
+        await projectAPI.update(currentProjectId, { projectId: newProjectId });
+      }
+    } catch (err) {
+      console.error('Failed to update project ID:', err);
+    }
+  };
+
+  // Update module Wp (project-level)
+  const handleModuleWpChange = async (newModuleWp) => {
+    try {
+      setModuleWp(newModuleWp);
+      const currentProjectId = getCurrentProjectId();
+      if (currentProjectId) {
+        await projectAPI.update(currentProjectId, { moduleWp: newModuleWp });
+      }
+    } catch (err) {
+      console.error('Failed to update module Wp:', err);
+    }
   };
 
   // Update active tab's settings
-  const updateSettings = (newSettings) => {
-    setTabsData(currentTabsData => {
-      const currentActiveTab = getActiveTab(currentTabsData);
-      if (!currentActiveTab) return currentTabsData;
+  const updateSettings = async (newSettings) => {
+    const currentActiveTab = getActiveTab(tabsData);
+    if (!currentActiveTab) return;
 
-      // Handle both object and function updaters
-      const settingsUpdate = typeof newSettings === 'function'
-        ? newSettings(currentActiveTab.settings)
-        : { ...currentActiveTab.settings, ...newSettings };
+    const prevSettings = currentActiveTab.settings;
 
-      return updateTab(currentTabsData, currentActiveTab.id, {
-        settings: settingsUpdate
-      });
-    });
+    // Handle both object and function updaters
+    const nextSettings = typeof newSettings === 'function'
+      ? newSettings(prevSettings)
+      : { ...prevSettings, ...newSettings };
+
+    // Client-side defense-in-depth: revert fields the user cannot edit
+    const protectedTabFields = [
+      'buffer', 'lengthsInput', 'costPerMm', 'costPerJointSet', 'joinerLength',
+      'maxPieces', 'maxWastePct', 'alphaJoint', 'betaSmall', 'allowUndershootPct', 'gammaShort',
+    ];
+    for (const field of protectedTabFields) {
+      if (Object.prototype.hasOwnProperty.call(nextSettings, field) && nextSettings[field] !== prevSettings[field]) {
+        if (!canEditField(field)) {
+          nextSettings[field] = prevSettings[field];
+          showToast(`${field}: Advanced only`);
+        }
+      }
+    }
+
+    // Optimistic UI update
+    setTabsData(currentTabsData => ({
+      ...currentTabsData,
+      tabs: currentTabsData.tabs.map(tab =>
+        tab.id === currentActiveTab.id
+          ? { ...tab, settings: { ...tab.settings, ...nextSettings } }
+          : tab
+      )
+    }));
+
+    // Send only changed keys
+    const patch = {};
+    for (const key of Object.keys(nextSettings)) {
+      if (nextSettings[key] !== prevSettings[key]) {
+        patch[key] = nextSettings[key];
+      }
+    }
+
+    if (Object.keys(patch).length === 0) return;
+
+    try {
+      await tabAPI.update(currentActiveTab.id, { settings: patch });
+    } catch (err) {
+      console.error('Failed to update settings:', err);
+
+      if (err?.code === 'FORBIDDEN_FIELD') {
+        showToast(`${err.field || 'Field'}: ${err.data?.message || err.message}`);
+      } else if (err?.code === 'PASSWORD_CHANGE_REQUIRED') {
+        showToast('Password change required before continuing.');
+      } else {
+        showToast(err?.message || 'Failed to save changes.');
+      }
+
+      await revertTabFromServer(currentActiveTab.id);
+    }
   };
 
   // Update active tab's rows
@@ -105,7 +290,14 @@ export default function App() {
         ? newRows(currentActiveTab.rows)
         : newRows;
 
-      return updateTab(currentTabsData, currentActiveTab.id, { rows: rowsUpdate });
+      // Update local state immediately (optimistic update)
+      // Row-level API calls will be handled by RailTable component
+      return {
+        ...currentTabsData,
+        tabs: currentTabsData.tabs.map(tab =>
+          tab.id === currentActiveTab.id ? { ...tab, rows: rowsUpdate } : tab
+        )
+      };
     });
   };
 
@@ -115,19 +307,101 @@ export default function App() {
       const currentActiveTab = getActiveTab(currentTabsData);
       if (!currentActiveTab) return currentTabsData;
 
-      return updateTab(currentTabsData, currentActiveTab.id, { selectedRowId: rowId });
+      // This is UI-only state, no need to save to server
+      return {
+        ...currentTabsData,
+        tabs: currentTabsData.tabs.map(tab =>
+          tab.id === currentActiveTab.id ? { ...tab, selectedRowId: rowId } : tab
+        )
+      };
     });
+  };
+
+  // Apply a setting to all tabs
+  const applySettingToAll = async (key, value) => {
+    if (!window.confirm(`Are you sure you want to apply this value (${value}) to ALL tabs?`)) return;
+
+    // Optimistic UI update
+    setTabsData(currentTabsData => ({
+      ...currentTabsData,
+      tabs: currentTabsData.tabs.map(tab => ({
+        ...tab,
+        settings: {
+          ...tab.settings,
+          [key]: value
+        }
+      }))
+    }));
+
+    // Server update
+    try {
+      if (!canEditField(key)) {
+        showToast(`${key}: Advanced only`);
+        const active = getActiveTab(tabsData);
+        if (active?.id) await revertTabFromServer(active.id);
+        return;
+      }
+
+      // Update all tabs in parallel
+      await Promise.all(
+        tabsData.tabs.map(tab =>
+          tabAPI.update(tab.id, {
+            settings: { [key]: value }
+          })
+        )
+      );
+    } catch (err) {
+      console.error('Failed to apply setting to all tabs:', err);
+      showToast(err?.message || 'Failed to save changes to server.');
+      const active = getActiveTab(tabsData);
+      if (active?.id) await revertTabFromServer(active.id);
+    }
   };
 
   const selectedRow = activeTab?.rows.find(r => r.id === activeTab.selectedRowId);
 
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading project data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-6 bg-white rounded-lg shadow-lg">
+          <div className="text-red-600 text-5xl mb-4">⚠</div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Failed to Load</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
       <Header
-        userMode={activeTab?.settings.userMode}
-        setUserMode={(mode) => updateSettings({ userMode: mode })}
         settings={activeTab?.settings}
         setSettings={updateSettings}
+        projectName={projectName}
+        setProjectName={handleProjectNameChange}
+        clientName={clientName}
+        setClientName={handleClientNameChange}
+        projectId={projectId}
+        setProjectId={handleProjectIdChange}
       />
 
       {/* Tab Bar */}
@@ -147,12 +421,17 @@ export default function App() {
           <GlobalInputs
             settings={activeTab?.settings}
             setSettings={updateSettings}
+            applyToAll={applySettingToAll}
+            longRailVariation={longRailVariation}
+            moduleWp={moduleWp}
+            setModuleWp={handleModuleWpChange}
           />
         </div>
 
         {/* Rail Table for active tab */}
         <section>
           <RailTable
+            tabId={activeTab?.id}
             rows={activeTab?.rows || []}
             setRows={updateRows}
             selectedRowId={activeTab?.selectedRowId}
@@ -160,9 +439,26 @@ export default function App() {
             settings={activeTab?.settings}
             setSettings={updateSettings}
             selectedRow={selectedRow}
+            longRailVariation={longRailVariation}
           />
         </section>
+
+        {/* Create BOM Button */}
+      <CreateBOMButton
+          tabsData={tabsData}
+          projectName={projectName}
+          longRailVariation={longRailVariation}
+          moduleWp={moduleWp}
+        />
       </main>
+
+      {toast && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <div className="bg-gray-900 text-white text-sm px-4 py-2 rounded-lg shadow-lg">
+            {toast.message}
+          </div>
+        </div>
+      )}
 
       {/* Dialogs */}
       <CreateTabDialog

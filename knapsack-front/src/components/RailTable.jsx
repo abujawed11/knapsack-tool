@@ -1,9 +1,13 @@
 // src/components/RailTable.jsx
-import { useMemo, useState, useRef } from 'react';
+import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { optimizeCuts, requiredRailLength, generateScenarios } from '../lib/optimizer';
 import { parseNumList, fmt } from '../lib/storage';
 import { TextField, NumberField } from './ui';
+import { usePersistedRows } from '../hooks/usePersistedRows';
+import { rowAPI } from '../services/api';
 import ResultCard from './ResultCard';
+import { useAuth } from '../context/AuthContext';
+import NumberInputWithSpinner from './NumberInputWithSpinner';
 import {
   DndContext,
   closestCenter,
@@ -60,8 +64,9 @@ function SortableRow({
     : '-';
 
   const defaultSB1 = calculateSB1(required);
-  const sb1Value = enableSB2 ? (row.supportBase1 ?? defaultSB1) : defaultSB1;
-  const sb2Value = row.supportBase2 ?? 0;
+  // When enableSB2 is on, use row.supportBase1 if it's set (non-zero), otherwise use calculated default
+  const sb1Value = enableSB2 ? (row.supportBase1 || defaultSB1) : defaultSB1;
+  const sb2Value = row.supportBase2 || 0;
 
   return (
     <tr
@@ -85,24 +90,24 @@ function SortableRow({
         <span className="text-gray-400 hover:text-purple-600 text-xl select-none">⋮⋮</span>
       </td>
       <td className="px-3 py-2 border-b">
-        <input
-          type="number"
-          value={row.quantity ?? 1}
-          onChange={(e) => updateRowQuantity(row.id, e.target.value)}
-          onClick={(e) => e.stopPropagation()}
-          className="w-16 px-2 py-1 border rounded text-center"
-          min="1"
-        />
+        <div onClick={(e) => e.stopPropagation()}>
+          <NumberInputWithSpinner
+            value={row.quantity ?? 0}
+            onChange={(val) => updateRowQuantity(row.id, val)}
+            minValue={0}
+            size="sm"
+          />
+        </div>
       </td>
       <td className="px-3 py-2 border-b">
-        <input
-          type="number"
-          value={row.modules}
-          onChange={(e) => updateRowModules(row.id, e.target.value)}
-          onClick={(e) => e.stopPropagation()}
-          className="w-16 px-2 py-1 border rounded text-center"
-          min="1"
-        />
+        <div onClick={(e) => e.stopPropagation()}>
+          <NumberInputWithSpinner
+            value={row.modules ?? 0}
+            onChange={(val) => updateRowModules(row.id, val)}
+            minValue={0}
+            size="sm"
+          />
+        </div>
       </td>
       <td className="px-3 py-2 text-center border-b">
         2
@@ -138,28 +143,28 @@ function SortableRow({
       </td>
       <td className="px-3 py-2 text-center border-b">
         {enableSB2 ? (
-          <input
-            type="number"
-            value={sb1Value}
-            onChange={(e) => updateRowSupportBase(row.id, 'supportBase1', e.target.value)}
-            onClick={(e) => e.stopPropagation()}
-            className="w-16 px-2 py-1 border rounded text-center"
-            min="0"
-          />
+          <div onClick={(e) => e.stopPropagation()}>
+            <NumberInputWithSpinner
+              value={sb1Value}
+              onChange={(val) => updateRowSupportBase(row.id, 'supportBase1', val)}
+              minValue={0}
+              size="sm"
+            />
+          </div>
         ) : (
           defaultSB1
         )}
       </td>
       <td className="px-3 py-2 text-center border-b">
         {enableSB2 ? (
-          <input
-            type="number"
-            value={sb2Value}
-            onChange={(e) => updateRowSupportBase(row.id, 'supportBase2', e.target.value)}
-            onClick={(e) => e.stopPropagation()}
-            className="w-16 px-2 py-1 border rounded text-center"
-            min="0"
-          />
+          <div onClick={(e) => e.stopPropagation()}>
+            <NumberInputWithSpinner
+              value={sb2Value}
+              onChange={(val) => updateRowSupportBase(row.id, 'supportBase2', val)}
+              minValue={0}
+              size="sm"
+            />
+          </div>
         ) : (
           '-'
         )}
@@ -214,23 +219,80 @@ function SortableRow({
 }
 
 export default function RailTable({
+  tabId,
   rows,
   setRows,
   selectedRowId,
   setSelectedRowId,
   settings,
   setSettings,
-  selectedRow
+  selectedRow,
+  longRailVariation
 }) {
-  const [showSettings, setShowSettings] = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  const [deleteConfirmRowId, setDeleteConfirmRowId] = useState(null);
+  const { canEditField } = useAuth();
 
-  // Get enableSB2 from settings (per-tab)
+  // Get enableSB2 from settings first (needed by callback below)
   const enableSB2 = settings?.enableSB2 ?? false;
   const setEnableSB2 = (value) => {
     setSettings(prev => ({ ...prev, enableSB2: value }));
   };
+
+  // Callback when a row is created (to calculate initial SB1 value)
+  const handleRowCreated = useCallback((createdRow) => {
+    // Always calculate SB1 as initial value for new rows
+    const required = requiredRailLength({
+      modules: createdRow.modules || 0,
+      moduleWidth: Number(settings?.moduleWidth) || 0,
+      midClamp: Number(settings?.midClamp) || 0,
+      endClampWidth: Number(settings?.endClampWidth) || 0,
+      buffer: Number(settings?.buffer) || 0
+    });
+
+    let divisor;
+    if (longRailVariation?.endsWith('Seam Clamp')) {
+      const seam = Number(settings?.seamToSeamDistance) || 400;
+      const maxSupport = Number(settings?.maxSupportDistance) || 1800;
+      divisor = seam * Math.floor(maxSupport / seam) || 1;
+    } else {
+      divisor = Number(settings?.purlinDistance) || 1;
+    }
+    const calculatedSB1 = Math.ceil(required / divisor) + 1;
+
+    if (calculatedSB1 > 0) {
+      //console.log(`💾 Setting initial SB1=${calculatedSB1} for new row ${createdRow.id}`);
+
+      // Update UI optimistically
+      setRows(currentRows =>
+        currentRows.map(r => r.id === createdRow.id ? { ...r, supportBase1: calculatedSB1 } : r)
+      );
+
+      // Save to database
+      import('../services/api').then(({ rowAPI }) => {
+        rowAPI.update(createdRow.id, { supportBase1: calculatedSB1 })
+          .catch(err => {
+            console.error('Failed to save SB1:', err);
+            // Rollback UI on error
+            setRows(currentRows =>
+              currentRows.map(r => r.id === createdRow.id ? { ...r, supportBase1: 0 } : r)
+            );
+          });
+      });
+    }
+  }, [settings, setRows]);
+
+  // Use persisted rows hook for database operations (only if tabId exists)
+  const persistedRows = tabId ? usePersistedRows(tabId, rows, setRows, handleRowCreated) : null;
+
+  const {
+    addRow: addRowToDB = () => {},
+    updateRowModules: updateRowModulesToDB = () => {},
+    updateRowQuantity: updateRowQuantityToDB = () => {},
+    updateRowSupportBase: updateRowSupportBaseToDB = () => {},
+    deleteRow: deleteRowFromDB = () => {}
+  } = persistedRows || {};
+  const [showSettings, setShowSettings] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [deleteConfirmRowId, setDeleteConfirmRowId] = useState(null);
 
   // Drag and drop sensors for @dnd-kit
   const sensors = useSensors(
@@ -274,12 +336,13 @@ export default function RailTable({
   };
 
   const {
-    userMode,
     moduleWidth,
     midClamp,
     endClampWidth,
     buffer,
     purlinDistance,
+    seamToSeamDistance,
+    maxSupportDistance,
     railsPerSide,
     lengthsInput,
     enabledLengths,
@@ -359,8 +422,15 @@ export default function RailTable({
 
   // Calculate default SB1 value for a row
   const calculateSB1 = (required) => {
-    const purlin = Number(purlinDistance) || 1;
-    return Math.ceil(required / purlin) + 1;
+    let divisor;
+    if (longRailVariation?.endsWith('Seam Clamp')) {
+      const seam = Number(seamToSeamDistance) || 400;
+      const maxSupport = Number(maxSupportDistance) || 1800;
+      divisor = seam * Math.floor(maxSupport / seam) || 1;
+    } else {
+      divisor = Number(purlinDistance) || 1;
+    }
+    return Math.ceil(required / divisor) + 1;
   };
 
   // Calculate totals for all columns
@@ -407,7 +477,7 @@ export default function RailTable({
 
       // SB1 and SB2 calculations
       const defaultSB1 = calculateSB1(required);
-      const sb1Value = enableSB2 ? (row.supportBase1 ?? defaultSB1) : defaultSB1;
+      const sb1Value = enableSB2 ? (row.supportBase1 || defaultSB1) : defaultSB1;
       const sb2Value = enableSB2 ? (row.supportBase2 ?? 0) : 0;
 
       result.sb1 += sb1Value * qty;
@@ -437,55 +507,170 @@ export default function RailTable({
       : 0;
 
     // Debug logging for Ratio of Supports to module
-    // console.log('=== Supports Calculation Debug ===');
-    // console.log('totals.sb1:', result.sb1);
-    // console.log('totals.sb2:', result.sb2);
-    // console.log('totals.modules:', result.modules);
-    // console.log('Sum (sb1 + sb2):', result.sb1 + result.sb2);
-    // console.log('Ratio (sb1+sb2)/modules:', result.modules > 0 ? ((result.sb1 + result.sb2) / result.modules) : 0);
-    // console.log('==================================');
+    // //console.log('=== Supports Calculation Debug ===');
+    // //console.log('totals.sb1:', result.sb1);
+    // //console.log('totals.sb2:', result.sb2);
+    // //console.log('totals.modules:', result.modules);
+    // //console.log('Sum (sb1 + sb2):', result.sb1 + result.sb2);
+    // //console.log('Ratio (sb1+sb2)/modules:', result.modules > 0 ? ((result.sb1 + result.sb2) / result.modules) : 0);
+    // //console.log('==================================');
 
     return result;
   }, [rowResults, allLengths, railsPerSide, enableSB2]);
 
-  const addRow = () => {
-    const newId = rows.length > 0 ? Math.max(...rows.map(r => r.id)) + 1 : 1;
+  const addRow = async () => {
     const lastModules = rows.length > 0 ? rows[rows.length - 1].modules : 0;
-    setRows([...rows, { id: newId, modules: lastModules + 1, quantity: 1 }]);
-    // Auto-select the new row
-    setSelectedRowId(newId);
+    await addRowToDB({ modules: lastModules + 1, quantity: 1 });
+    // SB1 calculation is now handled by handleRowCreated callback
   };
 
   const updateRowModules = (id, modules) => {
-    setRows(rows.map(r => r.id === id ? { ...r, modules: Number(modules) || 0 } : r));
+    updateRowModulesToDB(id, modules);
+
+    // When enableSB2 is FALSE, auto-recalculate and update SB1 based on new modules
+    // When enableSB2 is TRUE, don't auto-update (preserve user's custom value)
+    if (!enableSB2) {
+      const row = rows.find(r => r.id === id);
+      if (row) {
+        const required = requiredRailLength({
+          modules: Number(modules) || 0,
+          moduleWidth: Number(moduleWidth) || 0,
+          midClamp: Number(midClamp) || 0,
+          endClampWidth: Number(endClampWidth) || 0,
+          buffer: Number(buffer) || 0
+        });
+        const newSB1 = calculateSB1(required);
+
+        // Update SB1 in database
+        if (newSB1 > 0) {
+          updateRowSupportBaseToDB(id, 'supportBase1', newSB1);
+        }
+      }
+    }
   };
 
   const updateRowQuantity = (id, quantity) => {
-    setRows(rows.map(r => r.id === id ? { ...r, quantity: Math.max(1, Number(quantity) || 1) } : r));
+    updateRowQuantityToDB(id, quantity);
   };
 
-  const deleteRow = (id) => {
-    const newRows = rows.filter(r => r.id !== id);
-    setRows(newRows);
+  const deleteRow = async (id) => {
+    await deleteRowFromDB(id);
     if (selectedRowId === id) {
+      const newRows = rows.filter(r => r.id !== id);
       setSelectedRowId(newRows.length > 0 ? newRows[0].id : null);
     }
   };
 
   const updateRowSupportBase = (id, field, value) => {
-    setRows(rows.map(r => r.id === id ? { ...r, [field]: Number(value) || 0 } : r));
+    updateRowSupportBaseToDB(id, field, value);
   };
 
   // Drag and drop handler for @dnd-kit
-  const handleDragEnd = (event) => {
+  const handleDragEnd = async (event) => {
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
       const oldIndex = rows.findIndex((row) => row.id === active.id);
       const newIndex = rows.findIndex((row) => row.id === over.id);
-      setRows(arrayMove(rows, oldIndex, newIndex));
+      const newRows = arrayMove(rows, oldIndex, newIndex);
+
+      // Update UI optimistically
+      setRows(newRows);
+
+      // Persist new order to database
+      if (tabId) {
+        try {
+          // Create array of { id, rowNumber } to send to backend
+          const rowOrders = newRows.map((row, index) => ({
+            id: row.id,
+            rowNumber: index + 1  // rowNumber starts from 1
+          }));
+
+          await rowAPI.reorder(tabId, rowOrders);
+
+          //console.log('✅ Row order saved to database');
+        } catch (error) {
+          console.error('❌ Failed to save row order:', error);
+          // Optionally: rollback to old order on error
+          // setRows(rows);
+        }
+      }
     }
   };
+
+  // Initialize SB1 values when enableSB2 is turned on
+  useEffect(() => {
+    //console.log('🔍 SB1 Init useEffect triggered:', { enableSB2, tabId, rowsLength: rows.length });
+
+    if (enableSB2 && tabId && rows.length > 0) {
+      // //console.log('✅ Conditions met, initializing SB1 for rows...');
+
+      rows.forEach(row => {
+        //console.log(`  Row ${row.id}: supportBase1=${row.supportBase1}, modules=${row.modules}`);
+
+        // Only initialize if supportBase1 is not already set (null or 0)
+        if (row.supportBase1 == null || row.supportBase1 === 0) {
+          const required = requiredRailLength({
+            modules: row.modules || 0,
+            moduleWidth: Number(settings?.moduleWidth) || 0,
+            midClamp: Number(settings?.midClamp) || 0,
+            endClampWidth: Number(settings?.endClampWidth) || 0,
+            buffer: Number(settings?.buffer) || 0
+          });
+          const defaultSB1 = calculateSB1(required);
+
+          //console.log(`    Calculated SB1=${defaultSB1} for row ${row.id}`);
+
+          // Save calculated value to database
+          if (defaultSB1 > 0) {
+            //console.log(`    💾 Saving SB1=${defaultSB1} to database for row ${row.id}`);
+            updateRowSupportBaseToDB(row.id, 'supportBase1', defaultSB1);
+          } else {
+            //console.log(`    ⚠️ Skipping save: SB1=${defaultSB1} is not > 0`);
+          }
+        } else {
+          //console.log(`    ℹ️ Skipping row ${row.id}: supportBase1 already set to ${row.supportBase1}`);
+        }
+      });
+    } else {
+      //console.log('❌ Conditions not met:', { enableSB2, tabId, rowsLength: rows.length });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enableSB2, tabId]); // Only run when enableSB2 or tabId changes
+
+  // Auto-update all SB1 values when global settings change OR when rows change (only when enableSB2 is FALSE)
+  useEffect(() => {
+    // Only auto-update when enableSB2 is disabled (SB1 is auto-calculated)
+    if (!enableSB2 && tabId && rows.length > 0) {
+      //console.log('🔄 Recalculating SB1 for all rows (enableSB2=false)...');
+
+      rows.forEach(row => {
+        // Skip rows with temporary IDs (timestamp-based IDs > 1000000000000)
+        // These rows haven't been saved to DB yet
+        if (row.id > 1000000000000) {
+          //console.log(`  ⏭️ Skipping temp row ${row.id} (not yet saved to DB)`);
+          return;
+        }
+
+        const required = requiredRailLength({
+          modules: row.modules || 0,
+          moduleWidth: Number(moduleWidth) || 0,
+          midClamp: Number(midClamp) || 0,
+          endClampWidth: Number(endClampWidth) || 0,
+          buffer: Number(buffer) || 0
+        });
+        const newSB1 = calculateSB1(required);
+
+        // Only update if different from current value (to avoid unnecessary API calls)
+        const currentSB1 = Number(row.supportBase1) || 0;
+        if (newSB1 > 0 && newSB1 !== currentSB1) {
+          //console.log(`  💾 Updating SB1=${newSB1} for row ${row.id} (was ${currentSB1})`);
+          updateRowSupportBaseToDB(row.id, 'supportBase1', newSB1);
+        }
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [moduleWidth, midClamp, endClampWidth, buffer, purlinDistance, seamToSeamDistance, maxSupportDistance, enableSB2, rows.length]);
 
   return (
     <div className="bg-white rounded-2xl border shadow-sm">
@@ -532,65 +717,34 @@ export default function RailTable({
                 <div className="p-4 max-h-96 overflow-y-auto">
                   {/* Cost & Optimization Settings */}
                   <div className="mb-4">
-                    <h4 className="text-xs font-semibold text-purple-600 uppercase tracking-wide mb-3">Cost & Limits</h4>
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-xs font-semibold text-purple-600 uppercase tracking-wide">Cost & Limits</h4>
+                      {!canEditField('costPerMm') && (
+                        <span className="text-[10px] text-red-500 font-medium">Read-only</span>
+                      )}
+                    </div>
                     <div className="space-y-3 bg-gray-50 rounded-lg p-3">
                       <TextField
-                        label="Cost per mm"
+                        label="Cost per mm of Long Rail"
                         value={costPerMm}
                         setValue={(v) => updateSetting('costPerMm', v)}
+                        disabled={!canEditField('costPerMm')}
                       />
                       <TextField
                         label="Cost per Joint Set"
                         value={costPerJointSet}
                         setValue={(v) => updateSetting('costPerJointSet', v)}
+                        disabled={!canEditField('costPerJointSet')}
                       />
                       <TextField
                         label="Joiner Length (mm)"
                         value={joinerLength}
                         setValue={(v) => updateSetting('joinerLength', v)}
-                      />
-                      <NumberField
-                        label="Max Pieces"
-                        value={maxPieces}
-                        setValue={(v) => updateSetting('maxPieces', v)}
+                        disabled={!canEditField('joinerLength')}
                       />
                     </div>
                   </div>
 
-                  {/* Advanced Settings */}
-                  {userMode === 'advanced' && (
-                    <div className="mb-4">
-                      <h4 className="text-xs font-semibold text-orange-600 uppercase tracking-wide mb-3">Advanced Tuning</h4>
-                      <div className="space-y-3 bg-orange-50 rounded-lg p-3">
-                        <NumberField
-                          label="Max Waste %"
-                          value={maxWastePct}
-                          setValue={(v) => updateSetting('maxWastePct', v)}
-                          step={0.01}
-                        />
-                        <NumberField
-                          label="α Joint Penalty"
-                          value={alphaJoint}
-                          setValue={(v) => updateSetting('alphaJoint', v)}
-                        />
-                        <NumberField
-                          label="β Small Penalty"
-                          value={betaSmall}
-                          setValue={(v) => updateSetting('betaSmall', v)}
-                        />
-                        <NumberField
-                          label="Allow Undershoot %"
-                          value={allowUndershootPct}
-                          setValue={(v) => updateSetting('allowUndershootPct', v)}
-                        />
-                        <NumberField
-                          label="γ Shortage Penalty"
-                          value={gammaShort}
-                          setValue={(v) => updateSetting('gammaShort', v)}
-                        />
-                      </div>
-                    </div>
-                  )}
                 </div>
 
                 {/* Footer */}
@@ -628,7 +782,7 @@ export default function RailTable({
                 className="px-2 py-2 text-center font-medium text-gray-600 border-b"
                 title="Drag to reorder"
               >
-                ⋮⋮
+                
               </th>
               <th
                 rowSpan={2}

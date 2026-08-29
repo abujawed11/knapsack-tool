@@ -1,7 +1,7 @@
 // src/lib/storage.js
 const STORAGE_KEY = 'railOptimizerSettings';
 
-export const DEFAULT_LENGTHS = [1595, 1798, 2400, 2750, 3200, 3600, 4800];
+export const DEFAULT_LENGTHS = [1595, 1798, 2400, 2750, 3600, 4800];
 
 export const DEFAULT_SETTINGS = {
   userMode: 'normal',
@@ -74,4 +74,12 @@ export function parseNumList(s) {
 // Format number with commas
 export function fmt(n) {
   return new Intl.NumberFormat().format(n);
+}
+
+// Return merged defaults: admin-configured appDefaults take priority over hardcoded DEFAULT_SETTINGS
+// Falls back to DEFAULT_SETTINGS if appDefaults haven't loaded yet
+export function getEffectiveDefaults(appDefaults) {
+  return appDefaults?.tabDefaults
+    ? { ...DEFAULT_SETTINGS, ...appDefaults.tabDefaults }
+    : DEFAULT_SETTINGS;
 }

@@ -4,7 +4,11 @@ import { Card, KV } from './ui';
 import { requiredRailLength, generateScenarios } from '../lib/optimizer';
 import { parseNumList, fmt } from '../lib/storage';
 
+import { useAuth } from '../context/AuthContext';
+
 export default function ResultCard({ row, settings }) {
+  const { canEditField } = useAuth();
+
   const {
     moduleWidth,
     midClamp,
@@ -12,7 +16,6 @@ export default function ResultCard({ row, settings }) {
     buffer,
     lengthsInput,
     enabledLengths,
-    maxPieces,
     maxWastePct,
     allowUndershootPct,
     alphaJoint,
@@ -21,8 +24,7 @@ export default function ResultCard({ row, settings }) {
     costPerMm,
     costPerJointSet,
     joinerLength,
-    priority,
-    userMode
+    priority
   } = settings;
 
   const parsedLengths = useMemo(
@@ -159,7 +161,7 @@ export default function ResultCard({ row, settings }) {
         </div>
         <KV label="Pieces" value={result.pieces} />
         <KV label="Joints" value={result.joints} />
-        {userMode === 'advanced' && (
+        {canEditField('maxWastePct') && (
           <KV label="Small Pieces" value={result.smallCount} />
         )}
       </div>

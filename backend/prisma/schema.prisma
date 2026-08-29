@@ -1,0 +1,498 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// Projects Table - Stores project-level information
+model Project {
+  id                 Int      @id @default(autoincrement())
+  name               String   @default("Untitled Project") @db.VarChar(255)
+  clientName         String?  @map("client_name") @db.VarChar(255)
+  projectId          String?  @map("project_id") @db.VarChar(100)
+  longRailVariation  String?  @map("long_rail_variation") @db.VarChar(100)
+  walkwayVariation   String?  @map("walkway_variation") @db.VarChar(100)
+  moduleType         String   @default("LONG_RAIL") @map("module_type") @db.VarChar(20)
+  moduleWp           Decimal  @default(590) @map("module_wp") @db.Decimal(10, 2)
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+  userId             Int?     @map("user_id")
+  isActive           Boolean  @default(true) @map("is_active")
+
+  createdBy     User?         @relation(fields: [userId], references: [id])
+  tabs          Tab[]
+  generatedBoms GeneratedBom[]
+  savedBom      SavedBom?
+  walkwayRows   WalkwayRow[]
+  customBom     CustomBom?
+
+  @@map("projects")
+}
+
+// Walkway Master Items Table - Master weights and rates for walkway BOM components
+model WalkwayMasterItem {
+  id           Int      @id @default(autoincrement())
+  itemKey      String   @unique @map("item_key") @db.VarChar(50)
+  description  String   @db.VarChar(200)
+  profile      String?  @db.VarChar(200)
+  material     String?  @db.VarChar(100)
+  wtPc         Decimal? @map("wt_pc") @db.Decimal(10, 5)
+  fixedRatePc  Decimal? @map("fixed_rate_pc") @db.Decimal(10, 4)
+  cutLength    Int?     @map("cut_length")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("walkway_master_items")
+}
+
+// Walkway Rows Table - Stores individual walkway section rows within a walkway project
+model WalkwayRow {
+  id        Int      @id @default(autoincrement())
+  projectId Int      @map("project_id")
+  rowNumber Int      @map("row_number")
+  type      String   @default("H") @db.VarChar(1)  // "H" = Horizontal, "V" = Vertical
+  length    Decimal  @db.Decimal(10, 3)             // Length in meters
+  qty       Int      @default(1)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("walkway_rows")
+}
+
+// Users Table - Stores authentication and role information
+model User {
+  id                 Int       @id @default(autoincrement())
+  username           String    @unique @db.VarChar(50)
+  passwordHash       String    @map("password_hash") @db.VarChar(255)
+  role               String    @default("SALES") @db.VarChar(20) // SALES, DESIGN, MANAGER_SALES, MANAGER_DESIGN
+  status             String    @default("INACTIVE") @db.VarChar(20) // INACTIVE, ACTIVE, HOLD, DELETED
+  mustChangePassword Boolean   @default(true) @map("must_change_password")
+  isActive           Boolean   @default(true) @map("is_active") // DEPRECATED: Use status field instead
+  deletedAt          DateTime? @map("deleted_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  projects           Project[]
+  generatedBoms      GeneratedBom[]
+  savedBoms          SavedBom[]       @relation("CreatedBoms")
+  sharedBoms         SavedBom[]       @relation("SharedBoms")
+  sharesCreated      BomShare[]       @relation("SharesCreated")
+  sharesReceived     BomShareUser[]   @relation("SharesReceived")
+
+  @@map("users")
+}
+
+// Tabs Table - Stores individual tabs (buildings) within a project
+model Tab {
+  id        Int      @id @default(autoincrement())
+  projectId Int      @map("project_id")
+  name      String   @db.VarChar(100)
+  createdAt DateTime @default(now()) @map("created_at")
+  isActive  Boolean  @default(true) @map("is_active")
+
+  // Settings (denormalized for performance)
+  moduleLength       Decimal  @default(2278) @map("module_length") @db.Decimal(10, 2)
+  moduleWidth        Decimal  @default(1134) @map("module_width") @db.Decimal(10, 2)
+  frameThickness     Decimal  @default(35) @map("frame_thickness") @db.Decimal(10, 2)
+  midClamp           Decimal  @default(20) @map("mid_clamp") @db.Decimal(10, 2)
+  endClampWidth      Decimal  @default(40) @map("end_clamp_width") @db.Decimal(10, 2)
+  buffer             Decimal  @default(15) @map("buffer") @db.Decimal(10, 2)
+  purlinDistance     Decimal  @default(1700) @map("purlin_distance") @db.Decimal(10, 2)
+  seamToSeamDistance  Decimal  @default(400) @map("seam_to_seam_distance") @db.Decimal(10, 2)
+  maxSupportDistance  Decimal  @default(1800) @map("max_support_distance") @db.Decimal(10, 2)
+  railsPerSide       Int      @default(2) @map("rails_per_side")
+  lengthsInput       String?  @map("lengths_input") @db.Text
+  enabledLengths     Json?    @map("enabled_lengths")
+  maxPieces          Int      @default(3) @map("max_pieces")
+  maxWastePct        String?  @map("max_waste_pct") @db.VarChar(50)
+  alphaJoint         Decimal  @default(220) @map("alpha_joint") @db.Decimal(10, 2)
+  betaSmall          Decimal  @default(60) @map("beta_small") @db.Decimal(10, 2)
+  allowUndershootPct Decimal  @default(0) @map("allow_undershoot_pct") @db.Decimal(10, 2)
+  gammaShort         Decimal  @default(5) @map("gamma_short") @db.Decimal(10, 2)
+  costPerMm          String   @default("0.1") @map("cost_per_mm") @db.VarChar(50)
+  costPerJointSet    String   @default("50") @map("cost_per_joint_set") @db.VarChar(50)
+  joinerLength       String   @default("100") @map("joiner_length") @db.VarChar(50)
+  priority           String   @default("cost") @map("priority") @db.VarChar(20)
+  userMode           String   @default("normal") @map("user_mode") @db.VarChar(20)
+  enableSb2          Boolean  @default(false) @map("enable_sb2")
+
+  // BOM Profile Selection
+  longRailProfileSerialNumber String? @map("long_rail_profile_serial_number") @db.VarChar(20)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  rows    TabRow[]
+
+  @@index([projectId])
+  @@map("tabs")
+}
+
+// Tab Rows Table - Stores individual rows (rail configurations) within a tab
+model TabRow {
+  id           Int      @id @default(autoincrement())
+  tabId        Int      @map("tab_id")
+  rowNumber    Int      @map("row_number")
+  modules      Int      @default(0)
+  quantity     Int      @default(1)
+  supportBase1 Decimal? @map("support_base_1") @db.Decimal(10, 2)
+  supportBase2 Decimal? @map("support_base_2") @db.Decimal(10, 2)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  tab Tab @relation(fields: [tabId], references: [id], onDelete: Cascade)
+
+  @@index([tabId])
+  @@map("tab_rows")
+}
+
+// BOM Master Items Table - Master catalog of all BOM items (DEPRECATED - being migrated to sunrack_profiles + fasteners)
+model BomMasterItem {
+  id               Int      @id @default(autoincrement())
+  serialNumber     String   @unique @map("serial_number") @db.VarChar(20)
+  sunrackCode      String?  @unique @map("sunrack_code") @db.VarChar(50)
+  itemDescription  String   @map("item_description") @db.VarChar(255)
+  genericName      String   @map("generic_name") @db.VarChar(100)
+  designWeight     Decimal  @map("design_weight") @db.Decimal(10, 3)
+  material         String?  @db.VarChar(100)
+  standardLength   Int?     @map("standard_length")
+  uom              String   @db.VarChar(20)
+  category         String?  @db.VarChar(50)
+  profileImagePath String?  @map("profile_image_path") @db.VarChar(255)
+  selectedRmVendor String?  @map("selected_rm_vendor") @db.VarChar(50)
+  costPerPiece     Decimal? @map("cost_per_piece") @db.Decimal(10, 2)
+  itemType         String?  @map("item_type") @db.VarChar(20)
+  isActive         Boolean  @default(true) @map("is_active")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  // Link to Sunrack Profiles (for aluminum items, NULL for fasteners)
+  sunrackProfileId Int?     @map("sunrack_profile_id")
+
+  formulas       BomFormula[]
+  rmCodes        RmCode[]
+  variationItems BomVariationItem[]
+  sunrackProfile SunrackProfile? @relation(fields: [sunrackProfileId], references: [id])
+
+  @@index([sunrackCode])
+  @@index([category])
+  @@index([sunrackProfileId])
+  @@map("bom_master_items")
+}
+
+// Fasteners Table - Stores all fasteners (bolts, screws, washers, etc.)
+model Fastener {
+  id               Int      @id @default(autoincrement())
+
+  // Keep old serial number for migration reference
+  oldSerialNumber  String?  @unique @map("old_serial_number") @db.VarChar(20)
+
+  itemDescription  String   @map("item_description") @db.VarChar(255)
+  genericName      String   @map("generic_name") @db.VarChar(100)
+  material         String?  @db.VarChar(100)
+  standardLength   Int?     @map("standard_length")
+  uom              String   @db.VarChar(20)
+  category         String?  @db.VarChar(50)
+  costPerPiece     Decimal? @map("cost_per_piece") @db.Decimal(10, 2)
+  profileImagePath String?  @map("profile_image_path") @db.VarChar(255)
+  isActive         Boolean  @default(true) @map("is_active")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  formulas         BomFormula[]
+  variationItems   BomVariationItem[]
+
+  @@map("fasteners")
+}
+
+// BOM Formulas Table - Stores formula definitions for calculating BOM quantities
+model BomFormula {
+  id                 Int      @id @default(autoincrement())
+
+  // OLD: Will be removed after migration
+  itemSerialNumber   String?  @map("item_serial_number") @db.VarChar(20)
+
+  // NEW: Polymorphic FK - ONE of these should be set (profiles XOR fasteners)
+  sunrackProfileId   Int?     @map("sunrack_profile_id")
+  fastenerId         Int?     @map("fastener_id")
+
+  formulaKey         String   @map("formula_key") @db.VarChar(50)
+  formulaDescription String?  @map("formula_description") @db.Text
+  calculationLevel   Int      @map("calculation_level")
+  isActive           Boolean  @default(true) @map("is_active")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  // OLD relation (will be removed)
+  masterItem     BomMasterItem?  @relation(fields: [itemSerialNumber], references: [serialNumber])
+
+  // NEW relations
+  sunrackProfile SunrackProfile? @relation(fields: [sunrackProfileId], references: [id])
+  fastener       Fastener?       @relation(fields: [fastenerId], references: [id])
+
+  @@index([sunrackProfileId])
+  @@index([fastenerId])
+  @@index([formulaKey])
+  @@map("bom_formulas")
+}
+
+// RM Codes Table - Stores RM vendor codes for each BOM item
+model RmCode {
+  id               Int     @id @default(autoincrement())
+  itemSerialNumber String  @map("item_serial_number") @db.VarChar(20)
+  vendorName       String  @map("vendor_name") @db.VarChar(50)
+  code             String? @db.VarChar(50)
+
+  masterItem BomMasterItem @relation(fields: [itemSerialNumber], references: [serialNumber], onDelete: Cascade)
+
+  @@index([itemSerialNumber])
+  @@map("rm_codes")
+}
+
+// Generated BOM Table - Stores generated BOM snapshots (OPTIMIZED: minimal storage)
+model GeneratedBom {
+  id           Int      @id @default(autoincrement())
+  projectId    Int      @map("project_id")
+  generatedAt  DateTime @default(now()) @map("generated_at")
+
+  // OPTIMIZED: Store minimal data only (90% size reduction)
+  bomMetadata  Json?    @map("bom_metadata")       // Aluminum rate, spare %, tabs, panel counts, project info
+  bomItems     Json?    @map("bom_items")          // Minimal item data (profile references + quantities + user edits)
+  bomData      Json?    @map("bom_data")           // OLD: Complete BOM data (for backward compatibility during migration)
+  changeLog    Json?    @map("change_log")         // Array of user changes
+  notes        Json?    @map("notes")              // Array of notes for this BOM (copied from template, can be customized)
+
+  version      Int      @default(1)                // Version number
+  isLatest     Boolean  @default(true)             // Mark latest version
+  generatedBy  Int?     @map("generated_by")       // User ID (future)
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  project Project @relation(fields: [projectId], references: [id])
+  user    User?   @relation(fields: [generatedBy], references: [id])
+
+  @@index([projectId])
+  @@index([isLatest])
+  @@map("generated_boms")
+}
+
+// Saved BOMs Table - Stores user-saved BOM snapshots (one per project)
+model SavedBom {
+  id                    Int      @id @default(autoincrement())
+  projectId             Int      @unique @map("project_id")
+  bomData               Json     @map("bom_data")                  // Complete BOM snapshot
+  userNotes             Json?    @map("user_notes")                // User notes at save time
+  changeLog             Json?    @map("change_log")                // Change log at save time
+  customDefaultNotes    Json?    @map("custom_default_notes")      // Custom default notes for this BOM (if different from global)
+  createdBy             Int      @map("created_by")                // User who saved
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  // Sharing fields
+  parentBomId           Int?     @map("parent_bom_id")             // References the BOM this was copied from
+  sharedByUserId        Int?     @map("shared_by_user_id")         // User who shared this BOM
+  isSharedCopy          Boolean  @default(false) @map("is_shared_copy") // Flag to identify if this is a shared copy
+  createdFromShareToken String?  @map("created_from_share_token") @db.VarChar(255) // The token used to create this copy
+
+  project               Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user                  User      @relation("CreatedBoms", fields: [createdBy], references: [id])
+  parentBom             SavedBom? @relation("BomCopies", fields: [parentBomId], references: [id], onDelete: SetNull)
+  copiedBoms            SavedBom[] @relation("BomCopies")
+  sharedBy              User?     @relation("SharedBoms", fields: [sharedByUserId], references: [id], onDelete: SetNull)
+
+  sharesAsParent        BomShare[]     @relation("ParentBomShares")
+  sharesAsCreated       BomShareUser[] @relation("CreatedBomShares")
+
+  @@index([projectId])
+  @@index([parentBomId])
+  @@index([sharedByUserId])
+  @@map("saved_boms")
+}
+
+// Default Notes Table - Stores global default notes for all BOMs
+model DefaultNote {
+  id        Int      @id @default(autoincrement())
+  noteOrder Int      @unique @map("note_order")  // Order of note (1, 2, 3)
+  noteText  String   @map("note_text") @db.Text  // The actual note text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("default_notes")
+}
+
+// Sunrack Profiles Table - Master catalog of all Sunrack profiles with RM codes
+model SunrackProfile {
+  id                  Int      @id @default(autoincrement())
+  sNo                 Int      @unique @map("s_no")
+
+  // Vendor codes
+  regalCode           String?  @map("regal_code") @db.VarChar(50)
+  excellenceCode      String?  @map("excellence_code") @db.VarChar(50)
+  varnCode            String?  @map("varn_code") @db.VarChar(50)
+  rcCode              String?  @map("rc_code") @db.VarChar(50)
+  snalcoCode          String?  @map("snalco_code") @db.VarChar(50)
+  darshanCode         String?  @map("darshan_code") @db.VarChar(50)
+  jmCode              String?  @map("jm_code") @db.VarChar(50)
+  ralcoCode           String?  @map("ralco_code") @db.VarChar(50)
+  saiDeepCode         String?  @map("sai_deep_code") @db.VarChar(50)
+  eleanorCode         String?  @map("eleanor_code") @db.VarChar(50)
+
+  // Profile data
+  profileImage        String?  @map("profile_image") @db.Text
+  profileDescription  String   @map("profile_description") @db.Text
+  genericName         String   @map("generic_name") @db.VarChar(255)
+  designWeight        Decimal  @map("design_weight") @db.Decimal(10, 5)
+
+  // Additional properties from bom_master_items
+  material            String?  @db.VarChar(100)
+  standardLength      Int?     @map("standard_length")
+  uom                 String?  @db.VarChar(20)
+  category            String?  @db.VarChar(50)
+
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  bomMasterItems BomMasterItem[]  // OLD - will be removed
+  formulas       BomFormula[]     // NEW
+  variationItems BomVariationItem[] // NEW
+
+  @@index([regalCode])
+  @@index([excellenceCode])
+  @@index([varnCode])
+  @@map("sunrack_profiles")
+}
+
+// BOM Variation Templates Table - Stores template configuration for each BOM variation
+model BomVariationTemplate {
+  id            Int      @id @default(autoincrement())
+  variationName String   @unique @map("variation_name") @db.VarChar(255)
+  defaultNotes  Json     @map("default_notes")  // Array of default notes ["Note 1", "Note 2", ...]
+  order         String   @default("standard") @db.VarChar(50)  // Item ordering preference
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  
+  variationItems BomVariationItem[]
+
+  @@index([variationName])
+  @@map("bom_variation_templates")
+}
+
+// BOM Variation Items Table - "Hard Links" between Template and Items (Profiles or Fasteners)
+model BomVariationItem {
+  id               Int      @id @default(autoincrement())
+  templateId       Int      @map("template_id")
+
+  // OLD: Will be removed after migration
+  masterItemId     Int?     @map("master_item_id")
+
+  // NEW: Polymorphic FK - ONE of these should be set (profiles XOR fasteners)
+  sunrackProfileId Int?     @map("sunrack_profile_id")
+  fastenerId       Int?     @map("fastener_id")
+
+  // Overrides for this specific BOM context
+  displayOverride  String?  @map("display_override") @db.VarChar(255) // e.g. "M8 Fastener Set"
+  formulaKey       String?  @map("formula_key") @db.VarChar(50)       // Formula to use
+  quantityFormula  String?  @map("quantity_formula") @db.Text         // Human readable formula
+  sortOrder        Int      @default(0) @map("sort_order")            // Display order (from Excel S.N)
+
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  template         BomVariationTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  // OLD relation (will be removed)
+  masterItem       BomMasterItem?       @relation(fields: [masterItemId], references: [id])
+
+  // NEW relations
+  sunrackProfile   SunrackProfile?      @relation(fields: [sunrackProfileId], references: [id])
+  fastener         Fastener?            @relation(fields: [fastenerId], references: [id])
+
+  @@index([templateId])
+  @@index([masterItemId])
+  @@index([sunrackProfileId])
+  @@index([fastenerId])
+  @@map("bom_variation_items")
+}
+
+// BOM Shares Table - Tracks BOM sharing activities (ONE share = ONE link for multiple users)
+model BomShare {
+  id                Int       @id @default(autoincrement())
+  shareToken        String    @unique @map("share_token") @db.VarChar(255)
+  parentBomId       Int       @map("parent_bom_id")
+  sharedByUserId    Int       @map("shared_by_user_id")
+  message           String?   @db.Text
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  parentBom         SavedBom       @relation("ParentBomShares", fields: [parentBomId], references: [id], onDelete: Cascade)
+  sharedBy          User           @relation("SharesCreated", fields: [sharedByUserId], references: [id], onDelete: Cascade)
+  sharedWithUsers   BomShareUser[] // NEW: Multiple users can access this single link
+
+  @@index([shareToken])
+  @@index([sharedByUserId])
+  @@index([parentBomId])
+  @@map("bom_shares")
+}
+
+// BOM Share Users Table - Junction table tracking which users have access to each share
+model BomShareUser {
+  id              Int       @id @default(autoincrement())
+  bomShareId      Int       @map("bom_share_id")
+  userId          Int       @map("user_id")
+  isAccessed      Boolean   @default(false) @map("is_accessed")
+  accessedAt      DateTime? @map("accessed_at")
+  createdBomId    Int?      @map("created_bom_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  bomShare        BomShare  @relation(fields: [bomShareId], references: [id], onDelete: Cascade)
+  user            User      @relation("SharesReceived", fields: [userId], references: [id], onDelete: Cascade)
+  createdBom      SavedBom? @relation("CreatedBomShares", fields: [createdBomId], references: [id], onDelete: SetNull)
+
+  @@unique([bomShareId, userId]) // Prevent duplicate shares to same user
+  @@index([bomShareId])
+  @@index([userId])
+  @@index([createdBomId])
+  @@map("bom_share_users")
+}
+
+// System Config Table - Stores dynamic permissions and app defaults
+model SystemConfig {
+  key       String   @id @db.VarChar(100)
+  value     Json
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("system_config")
+}
+
+// Custom BOM Table - Stores custom BOM data (buildings + line items + material rates) per project
+model CustomBom {
+  id          Int      @id @default(autoincrement())
+  projectId   Int      @unique @map("project_id")
+
+  // Project params
+  moduleWp    Decimal  @default(590) @map("module_wp") @db.Decimal(10, 2)
+  sparePercent Decimal @default(1)   @map("spare_percent") @db.Decimal(5, 2)
+
+  // Material rates (INR per kg)
+  ss304Rate   Decimal  @default(0) @map("ss304_rate") @db.Decimal(10, 2)
+  al6063Rate  Decimal  @default(0) @map("al6063_rate") @db.Decimal(10, 2)
+  t6Rate      Decimal  @default(0) @map("t6_rate") @db.Decimal(10, 2)
+  giRate      Decimal  @default(0) @map("gi_rate") @db.Decimal(10, 2)
+
+  // Buildings with line items stored as JSON
+  // Structure: [{ id, name, items: [{ id, profileId, itemType, genericName, itemCode, itemDescription, material, designWeight, length, quantity, rm, wt, cost }] }]
+  buildings   Json     @default("[]")
+
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("custom_boms")
+}

@@ -2,9 +2,27 @@
 import { Card, TextField, NumberField } from './ui';
 import { exportToFile, DEFAULT_SETTINGS, DEFAULT_LENGTHS } from '../lib/storage';
 
-export default function SettingsPanel({ settings, setSettings, onImport }) {
+import { useAuth } from '../context/AuthContext';
+
+export default function SettingsPanel({
+  settings,
+  setSettings,
+  onClose,
+  applyToAll
+}) {
+  const { canEditField, appDefaults } = useAuth();
+
   const {
-    userMode,
+    moduleLength,
+    moduleWidth,
+    frameThickness,
+    midClamp,
+    endClampWidth,
+    buffer,
+    purlinDistance,
+    railsPerSide,
+    lengthsInput,
+    enabledLengths,
     maxPieces,
     maxWastePct,
     alphaJoint,
@@ -27,9 +45,14 @@ export default function SettingsPanel({ settings, setSettings, onImport }) {
 
   const handleReset = () => {
     if (confirm('Reset all settings to defaults?')) {
+      const tabDefs = appDefaults?.tabDefaults;
+      const base = tabDefs ? { ...DEFAULT_SETTINGS, ...tabDefs } : DEFAULT_SETTINGS;
+      const defaultLengths = tabDefs?.lengthsInput
+        ? tabDefs.lengthsInput.split(/[,\s]+/).map(s => parseInt(s)).filter(n => !isNaN(n))
+        : DEFAULT_LENGTHS;
       setSettings({
-        ...DEFAULT_SETTINGS,
-        enabledLengths: DEFAULT_LENGTHS.reduce((acc, len) => ({ ...acc, [len]: true }), {})
+        ...base,
+        enabledLengths: defaultLengths.reduce((acc, len) => ({ ...acc, [len]: true }), {}),
       });
     }
   };
@@ -56,52 +79,52 @@ export default function SettingsPanel({ settings, setSettings, onImport }) {
   return (
     <div className="space-y-4">
       {/* Cost Settings */}
-      <Card title="Cost Settings">
-        <div className="space-y-3">
-          <TextField
-            label="Cost per mm"
-            value={costPerMm}
-            setValue={(v) => updateSetting('costPerMm', v)}
-          />
-          <TextField
-            label="Cost per Joint Set"
-            value={costPerJointSet}
-            setValue={(v) => updateSetting('costPerJointSet', v)}
-          />
-          <TextField
-            label="Joiner Length (mm)"
-            value={joinerLength}
-            setValue={(v) => updateSetting('joinerLength', v)}
-          />
-        </div>
-      </Card>
+      {canEditField('costPerMm') && (
+        <Card title="Cost Settings">
+          <div className="space-y-3">
+            <TextField
+              label="Cost per mm of Long Rail"
+              value={costPerMm}
+              setValue={(v) => updateSetting('costPerMm', v)}
+            />
+            <TextField
+              label="Cost per Joint Set"
+              value={costPerJointSet}
+              setValue={(v) => updateSetting('costPerJointSet', v)}
+              disabled={!canEditField('costPerJointSet')}
+            />
+            <TextField
+              label="Joiner Length (mm)"
+              value={joinerLength}
+              setValue={(v) => updateSetting('joinerLength', v)}
+              disabled={!canEditField('joinerLength')}
+            />
+          </div>
+        </Card>
+      )}
 
       {/* Optimization */}
       <Card title="Optimization">
         <div className="space-y-3">
-          <NumberField
-            label="Max Pieces"
-            value={maxPieces}
-            setValue={(v) => updateSetting('maxPieces', v)}
-          />
-
           <div>
-            <div className="text-sm text-gray-600 mb-2">Priority</div>
+            <div className={`text-sm mb-2 ${!canEditField('priority') ? 'text-gray-400' : 'text-gray-600'}`}>Priority</div>
             <div className="space-y-2">
-              <label className="flex items-center gap-2 cursor-pointer">
+              <label className={`flex items-center gap-2 ${canEditField('priority') ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}>
                 <input
                   type="radio"
                   checked={priority === 'length'}
                   onChange={() => updateSetting('priority', 'length')}
+                  disabled={!canEditField('priority')}
                   className="w-4 h-4 text-purple-600"
                 />
                 <span className="text-sm">Lesser rail length</span>
               </label>
-              <label className="flex items-center gap-2 cursor-pointer">
+              <label className={`flex items-center gap-2 ${canEditField('priority') ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}>
                 <input
                   type="radio"
                   checked={priority === 'joints'}
                   onChange={() => updateSetting('priority', 'joints')}
+                  disabled={!canEditField('priority')}
                   className="w-4 h-4 text-purple-600"
                 />
                 <span className="text-sm">Lesser joints</span>
@@ -111,39 +134,6 @@ export default function SettingsPanel({ settings, setSettings, onImport }) {
         </div>
       </Card>
 
-      {/* Advanced Settings */}
-      {userMode === 'advanced' && (
-        <Card title="Advanced">
-          <div className="space-y-3">
-            <NumberField
-              label="Max Waste %"
-              value={maxWastePct}
-              setValue={(v) => updateSetting('maxWastePct', v)}
-              step={0.01}
-            />
-            <NumberField
-              label="α Joint Penalty"
-              value={alphaJoint}
-              setValue={(v) => updateSetting('alphaJoint', v)}
-            />
-            <NumberField
-              label="β Small Penalty"
-              value={betaSmall}
-              setValue={(v) => updateSetting('betaSmall', v)}
-            />
-            <NumberField
-              label="Allow Undershoot %"
-              value={allowUndershootPct}
-              setValue={(v) => updateSetting('allowUndershootPct', v)}
-            />
-            <NumberField
-              label="γ Shortage Penalty"
-              value={gammaShort}
-              setValue={(v) => updateSetting('gammaShort', v)}
-            />
-          </div>
-        </Card>
-      )}
 
       {/* Export/Import */}
       <Card title="Data">
